@@ -1,0 +1,980 @@
+// Fairtech Site Manager - data model
+// Every operational record carries a siteId so a second site can be added without a rewrite.
+// Nothing is hard-deleted: rows carry voidedAt / voidReason or an `active` flag.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Auth & users
+// ---------------------------------------------------------------------------
+
+enum Role {
+  SUPERADMIN
+  SITE_INCHARGE
+  SUPERVISOR
+  VIEWER
+}
+
+model User {
+  id           String    @id @default(cuid())
+  username     String    @unique
+  passwordHash String
+  name         String
+  phone        String?
+  role         Role
+  siteId       String?
+  site         Site?     @relation(fields: [siteId], references: [id])
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  lastLoginAt  DateTime?
+
+  sessions  Session[]
+  auditLogs AuditLog[]
+
+  createdJobs            Job[]
+  stageProgressEntries   StageProgress[]           @relation("StageProgressEnteredBy")
+  attendanceMarked       Attendance[]              @relation("AttendanceMarkedBy")
+  advancesRequested      Advance[]                 @relation("AdvanceRequestedBy")
+  advancesDecided        Advance[]                 @relation("AdvanceDecidedBy")
+  wageRatesSet           WageRate[]
+  wageSheetsGenerated    WageSheet[]
+  pettyRequestsRaised    PettyCashRequest[]        @relation("PettyReqRequestedBy")
+  pettyRequestsDecided   PettyCashRequest[]        @relation("PettyReqDecidedBy")
+  pettyTxnsEntered       PettyCashTxn[]
+  reconciliations        PettyCashReconciliation[]
+  machineDispatchesSent  MachineDispatch[]         @relation("MachineDispatchedBy")
+  machineDispatchesRecvd MachineDispatch[]         @relation("MachineReceivedBy")
+  ticketsRaised          MachineTicket[]           @relation("TicketRaisedBy")
+  ticketsVerified        MachineTicket[]           @relation("TicketVerifiedBy")
+  consDispatchesSent     ConsumableDispatch[]      @relation("ConsDispatchedBy")
+  consDispatchesRecvd    ConsumableDispatch[]      @relation("ConsReceivedBy")
+  consumptionsEntered    ConsumableConsumption[]
+  consRequestsRaised     ConsumableRequest[]       @relation("ConsReqRequestedBy")
+  consRequestsDecided    ConsumableRequest[]       @relation("ConsReqDecidedBy")
+  issuesRaised           Issue[]                   @relation("IssueRaisedBy")
+  issuesClosed           Issue[]                   @relation("IssueClosedBy")
+  dailyPlansSubmitted    DailyPlan[]
+  dprsSubmitted          DPR[]
+  photosTaken            SitePhoto[]
+  backdateUnlocks        BackdateUnlock[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  userAgent String?
+
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Site
+// ---------------------------------------------------------------------------
+
+model Site {
+  id                 String   @id @default(cuid())
+  code               String   @unique // short prefix used in job numbers, e.g. "SITE" -> SITE-001
+  name               String
+  city               String
+  address            String?
+  latitude           Float?
+  longitude          Float?
+  pettyCashThreshold Decimal  @default(5000) @db.Decimal(12, 2)
+  dprCutoffHour      Int      @default(20) // 8 PM IST
+  active             Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  users             User[]
+  jobs              Job[]
+  stages            Stage[]
+  stageProgress     StageProgress[]
+  workers           Worker[]
+  attendance        Attendance[]
+  holidays          Holiday[]
+  advances          Advance[]
+  wageSheets        WageSheet[]
+  pettyRequests     PettyCashRequest[]
+  pettyTxns         PettyCashTxn[]
+  reconciliations   PettyCashReconciliation[]
+  machines          Machine[]
+  machineDispatches MachineDispatch[]
+  machineTickets    MachineTicket[]
+  consDispatches    ConsumableDispatch[]
+  consStock         ConsumableStock[]
+  consConsumptions  ConsumableConsumption[]
+  consRequests      ConsumableRequest[]
+  issues            Issue[]
+  dailyPlans        DailyPlan[]
+  dprs              DPR[]
+  photos            SitePhoto[]
+  auditLogs         AuditLog[]
+  backdateUnlocks   BackdateUnlock[]
+}
+
+// ---------------------------------------------------------------------------
+// Jobs & stages
+// ---------------------------------------------------------------------------
+
+enum JobStatus {
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  CLOSED
+}
+
+enum QtyUnit {
+  MT
+  NOS
+  METRE
+  SQM
+}
+
+model Job {
+  id                 String    @id @default(cuid())
+  siteId             String
+  site               Site      @relation(fields: [siteId], references: [id])
+  jobNumber          String    @unique // e.g. SITE-001
+  name               String
+  clientName         String
+  description        String?
+  drawingRef         String?
+  plannedTonnage     Decimal   @db.Decimal(12, 3)
+  plannedStart       DateTime  @db.Date
+  plannedEnd         DateTime  @db.Date
+  actualStart        DateTime? @db.Date
+  actualEnd          DateTime? @db.Date
+  status             JobStatus @default(ACTIVE)
+  weldingNormKgPerMT Decimal?  @db.Decimal(8, 3) // consumption norm; null = no check
+  createdById        String
+  createdBy          User      @relation(fields: [createdById], references: [id])
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  voidedAt           DateTime?
+  voidReason         String?
+
+  stages        Stage[]
+  stageProgress StageProgress[]
+  consumptions  ConsumableConsumption[]
+  issues        Issue[]
+  planItems     DailyPlanItem[]
+  photos        SitePhoto[]
+}
+
+model Stage {
+  id          String    @id @default(cuid())
+  siteId      String
+  site        Site      @relation(fields: [siteId], references: [id])
+  jobId       String
+  job         Job       @relation(fields: [jobId], references: [id])
+  sequence    Int
+  name        String
+  unit        QtyUnit   @default(MT)
+  plannedQty  Decimal   @db.Decimal(12, 3)
+  plannedDays Int
+  actualStart DateTime? @db.Date
+  actualEnd   DateTime? @db.Date
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  voidedAt    DateTime?
+  voidReason  String?
+
+  progress     StageProgress[]
+  planItems    DailyPlanItem[]
+  consumptions ConsumableConsumption[]
+  photos       SitePhoto[]
+
+  @@unique([jobId, sequence])
+  @@index([siteId])
+}
+
+/// One row per stage per date. Workers and hours are in StageWorkLog.
+model StageProgress {
+  id              String    @id @default(cuid())
+  siteId          String
+  site            Site      @relation(fields: [siteId], references: [id])
+  jobId           String
+  job             Job       @relation(fields: [jobId], references: [id])
+  stageId         String
+  stage           Stage     @relation(fields: [stageId], references: [id])
+  date            DateTime  @db.Date
+  qtyDone         Decimal   @default(0) @db.Decimal(12, 3)
+  percentComplete Decimal   @default(0) @db.Decimal(5, 2) // cumulative % as reported that day
+  remark          String?
+  enteredById     String
+  enteredBy       User      @relation("StageProgressEnteredBy", fields: [enteredById], references: [id])
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  voidedAt        DateTime?
+  voidReason      String?
+
+  workLogs StageWorkLog[]
+
+  @@unique([stageId, date])
+  @@index([siteId, date])
+}
+
+enum Shift {
+  DAY
+  NIGHT
+}
+
+model StageWorkLog {
+  id              String        @id @default(cuid())
+  stageProgressId String
+  stageProgress   StageProgress @relation(fields: [stageProgressId], references: [id], onDelete: Cascade)
+  workerId        String
+  worker          Worker        @relation(fields: [workerId], references: [id])
+  date            DateTime      @db.Date
+  shift           Shift         @default(DAY)
+  hours           Decimal       @default(8) @db.Decimal(4, 1)
+
+  // A worker can only be on one stage per day per shift.
+  @@unique([workerId, date, shift])
+}
+
+// ---------------------------------------------------------------------------
+// Labour
+// ---------------------------------------------------------------------------
+
+enum Trade {
+  FITTER
+  WELDER
+  GRINDER
+  GAS_CUTTER
+  HELPER
+  RIGGER
+  PAINTER
+}
+
+enum WageType {
+  PER_HOUR
+  PER_DAY
+}
+
+model Worker {
+  id             String    @id @default(cuid())
+  siteId         String
+  site           Site      @relation(fields: [siteId], references: [id])
+  code           String // e.g. W-001, unique per site
+  name           String
+  photoUrl       String?
+  phone          String?
+  trade          Trade
+  joiningDate    DateTime  @db.Date
+  leavingDate    DateTime? @db.Date
+  wageType       WageType  @default(PER_DAY)
+  contractorName String?
+  idDocRef       String? // reference number only, never a document upload
+  active         Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  wageRates  WageRate[]
+  attendance Attendance[]
+  advances   Advance[]
+  wageSheets WageSheet[]
+  workLogs   StageWorkLog[]
+
+  @@unique([siteId, code])
+}
+
+/// Rate history. The rate in force on a date is the latest row with effectiveFrom <= date.
+model WageRate {
+  id            String   @id @default(cuid())
+  workerId      String
+  worker        Worker   @relation(fields: [workerId], references: [id])
+  rate          Decimal  @db.Decimal(10, 2)
+  otRate        Decimal? @db.Decimal(10, 2) // per hour; null = 1.5x hourly equivalent
+  effectiveFrom DateTime @db.Date
+  setById       String
+  setBy         User     @relation(fields: [setById], references: [id])
+  createdAt     DateTime @default(now())
+
+  @@index([workerId, effectiveFrom])
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  HALF_DAY
+  HOLIDAY
+}
+
+model Attendance {
+  id         String           @id @default(cuid())
+  siteId     String
+  site       Site             @relation(fields: [siteId], references: [id])
+  workerId   String
+  worker     Worker           @relation(fields: [workerId], references: [id])
+  date       DateTime         @db.Date
+  status     AttendanceStatus
+  inTime     String? // "HH:MM" IST
+  outTime    String?
+  otHours    Decimal          @default(0) @db.Decimal(4, 1)
+  remark     String?
+  markedById String
+  markedBy   User             @relation("AttendanceMarkedBy", fields: [markedById], references: [id])
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  @@unique([workerId, date])
+  @@index([siteId, date])
+}
+
+model Holiday {
+  id        String   @id @default(cuid())
+  siteId    String
+  site      Site     @relation(fields: [siteId], references: [id])
+  date      DateTime @db.Date
+  name      String
+  createdAt DateTime @default(now())
+
+  @@unique([siteId, date])
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Advance {
+  id            String         @id @default(cuid())
+  siteId        String
+  site          Site           @relation(fields: [siteId], references: [id])
+  workerId      String
+  worker        Worker         @relation(fields: [workerId], references: [id])
+  amount        Decimal        @db.Decimal(12, 2)
+  reason        String
+  status        ApprovalStatus @default(PENDING)
+  requestedById String
+  requestedBy   User           @relation("AdvanceRequestedBy", fields: [requestedById], references: [id])
+  requestedAt   DateTime       @default(now())
+  decidedById   String?
+  decidedBy     User?          @relation("AdvanceDecidedBy", fields: [decidedById], references: [id])
+  decidedAt     DateTime?
+  decisionNote  String?
+  paidAt        DateTime?
+  wageSheetId   String? // set when deducted
+  wageSheet     WageSheet?     @relation(fields: [wageSheetId], references: [id])
+  voidedAt      DateTime?
+  voidReason    String?
+
+  @@index([siteId, status])
+}
+
+enum WagePeriod {
+  WEEKLY
+  MONTHLY
+}
+
+enum WageSheetStatus {
+  DRAFT
+  FINAL
+  PAID
+}
+
+model WageSheet {
+  id               String          @id @default(cuid())
+  siteId           String
+  site             Site            @relation(fields: [siteId], references: [id])
+  workerId         String
+  worker           Worker          @relation(fields: [workerId], references: [id])
+  period           WagePeriod
+  periodStart      DateTime        @db.Date
+  periodEnd        DateTime        @db.Date
+  daysPresent      Decimal         @db.Decimal(5, 1)
+  hours            Decimal         @db.Decimal(7, 1)
+  otHours          Decimal         @db.Decimal(7, 1)
+  grossWage        Decimal         @db.Decimal(12, 2)
+  advancesDeducted Decimal         @db.Decimal(12, 2)
+  netPayable       Decimal         @db.Decimal(12, 2)
+  status           WageSheetStatus @default(DRAFT)
+  generatedById    String
+  generatedBy      User            @relation(fields: [generatedById], references: [id])
+  generatedAt      DateTime        @default(now())
+  paidAt           DateTime?
+  voidedAt         DateTime?
+  voidReason       String?
+
+  advances Advance[]
+
+  @@unique([workerId, period, periodStart])
+  @@index([siteId, periodStart])
+}
+
+// ---------------------------------------------------------------------------
+// Petty cash
+// ---------------------------------------------------------------------------
+
+enum Urgency {
+  NORMAL
+  URGENT
+  WORK_STOPPED
+}
+
+enum PettyRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SENT
+}
+
+enum PaymentMode {
+  UPI
+  BANK
+  CASH
+}
+
+model PettyCashRequest {
+  id            String             @id @default(cuid())
+  siteId        String
+  site          Site               @relation(fields: [siteId], references: [id])
+  amount        Decimal            @db.Decimal(12, 2)
+  reason        String
+  urgency       Urgency            @default(NORMAL)
+  status        PettyRequestStatus @default(PENDING)
+  requestedById String
+  requestedBy   User               @relation("PettyReqRequestedBy", fields: [requestedById], references: [id])
+  requestedAt   DateTime           @default(now())
+  decidedById   String?
+  decidedBy     User?              @relation("PettyReqDecidedBy", fields: [decidedById], references: [id])
+  decidedAt     DateTime?
+  decisionNote  String?
+  sentAt        DateTime?
+  sentMode      PaymentMode?
+  sentRef       String?
+  voidedAt      DateTime?
+  voidReason    String?
+
+  txns PettyCashTxn[]
+
+  @@index([siteId, status])
+}
+
+enum PettyTxnType {
+  TOPUP
+  EXPENSE
+  ADJUSTMENT
+}
+
+enum ExpenseCategory {
+  LABOUR_FOOD
+  LOCAL_TRANSPORT
+  SMALL_PURCHASE
+  HARDWARE
+  MEDICAL
+  MISC
+}
+
+model PettyCashTxn {
+  id                  String             @id @default(cuid())
+  siteId              String
+  site                Site               @relation(fields: [siteId], references: [id])
+  date                DateTime           @db.Date
+  type                PettyTxnType
+  amount              Decimal            @db.Decimal(12, 2) // positive; sign determined by type
+  category            ExpenseCategory?
+  description         String
+  paidTo              String?
+  billPhotoUrl        String?
+  requestId           String?
+  request             PettyCashRequest?  @relation(fields: [requestId], references: [id])
+  consumableRequestId String?            @unique
+  consumableRequest   ConsumableRequest? @relation(fields: [consumableRequestId], references: [id])
+  enteredById         String
+  enteredBy           User               @relation(fields: [enteredById], references: [id])
+  createdAt           DateTime           @default(now())
+  voidedAt            DateTime?
+  voidReason          String?
+
+  @@index([siteId, date])
+}
+
+model PettyCashReconciliation {
+  id           String   @id @default(cuid())
+  siteId       String
+  site         Site     @relation(fields: [siteId], references: [id])
+  month        DateTime @db.Date // first day of month
+  physicalCash Decimal  @db.Decimal(12, 2)
+  appBalance   Decimal  @db.Decimal(12, 2)
+  note         String?
+  enteredById  String
+  enteredBy    User     @relation(fields: [enteredById], references: [id])
+  createdAt    DateTime @default(now())
+
+  @@unique([siteId, month])
+}
+
+// ---------------------------------------------------------------------------
+// Machines
+// ---------------------------------------------------------------------------
+
+enum MachineType {
+  WELDING_MACHINE
+  GRINDER
+  GAS_CUTTING_SET
+  DRILLING_MACHINE
+  CHAIN_PULLEY_BLOCK
+  DG_SET
+  COMPRESSOR
+  OTHER
+}
+
+enum MachineStatus {
+  AT_FACTORY
+  RUNNING
+  IDLE
+  UNDER_REPAIR
+  SENT_OUT_FOR_REPAIR
+  RETURNED_TO_FACTORY
+}
+
+enum Condition {
+  GOOD
+  AVERAGE
+  NEEDS_REPAIR
+}
+
+model Machine {
+  id            String        @id @default(cuid())
+  machineNumber String        @unique // M-014
+  type          MachineType
+  make          String?
+  model         String?
+  serialNo      String?
+  siteId        String? // current site, null while at factory
+  site          Site?         @relation(fields: [siteId], references: [id])
+  status        MachineStatus @default(AT_FACTORY)
+  active        Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  dispatches MachineDispatch[]
+  tickets    MachineTicket[]
+}
+
+enum DispatchDirection {
+  TO_SITE
+  TO_FACTORY
+}
+
+model MachineDispatch {
+  id                  String            @id @default(cuid())
+  machineId           String
+  machine             Machine           @relation(fields: [machineId], references: [id])
+  siteId              String
+  site                Site              @relation(fields: [siteId], references: [id])
+  direction           DispatchDirection
+  dispatchDate        DateTime          @db.Date
+  dispatchPhotoUrl    String?
+  conditionOnDispatch Condition
+  dispatchedById      String
+  dispatchedBy        User              @relation("MachineDispatchedBy", fields: [dispatchedById], references: [id])
+  receivedAt          DateTime?
+  receivedPhotoUrl    String?
+  conditionOnReceipt  Condition?
+  receivedById        String?
+  receivedBy          User?             @relation("MachineReceivedBy", fields: [receivedById], references: [id])
+  remark              String?
+  createdAt           DateTime          @default(now())
+  voidedAt            DateTime?
+  voidReason          String?
+
+  @@index([siteId, dispatchDate])
+}
+
+enum RepairType {
+  IN_HOUSE
+  SENT_OUT
+}
+
+enum TicketStatus {
+  OPEN
+  IN_REPAIR
+  RESOLVED
+}
+
+model MachineTicket {
+  id               String       @id @default(cuid())
+  machineId        String
+  machine          Machine      @relation(fields: [machineId], references: [id])
+  siteId           String
+  site             Site         @relation(fields: [siteId], references: [id])
+  problem          String
+  raisedOn         DateTime     @db.Date
+  raisedById       String
+  raisedBy         User         @relation("TicketRaisedBy", fields: [raisedById], references: [id])
+  status           TicketStatus @default(OPEN)
+  repairType       RepairType?
+  repairedBy       String? // person or vendor name
+  repairCost       Decimal?     @db.Decimal(12, 2)
+  downtimeDays     Decimal?     @db.Decimal(5, 1)
+  resolvedAt       DateTime?
+  verifiedById     String? // mandatory sign-off when resolving
+  verifiedBy       User?        @relation("TicketVerifiedBy", fields: [verifiedById], references: [id])
+  verifiedAt       DateTime?
+  verificationNote String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  voidedAt         DateTime?
+  voidReason       String?
+
+  parts MachineTicketPart[]
+
+  @@index([siteId, status])
+}
+
+model MachineTicketPart {
+  id       String        @id @default(cuid())
+  ticketId String
+  ticket   MachineTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  item     String
+  qty      Decimal       @default(1) @db.Decimal(10, 2)
+  price    Decimal       @db.Decimal(12, 2)
+}
+
+// ---------------------------------------------------------------------------
+// Consumables
+// ---------------------------------------------------------------------------
+
+enum ConsumableCategory {
+  WELDING_ELECTRODE
+  MIG_WIRE
+  GAS
+  GRINDING
+  CUTTING
+  HAND_TOOL
+  PPE_SAFETY
+  PAINT
+  HARDWARE
+  OTHER
+}
+
+/// Global item master (shared across sites). Stock and consumption are per site.
+model ConsumableItem {
+  id                  String             @id @default(cuid())
+  name                String             @unique
+  category            ConsumableCategory
+  unit                String // kg, nos, cylinder, litre, box
+  reorderLevel        Decimal            @default(0) @db.Decimal(12, 3)
+  isWeldingConsumable Boolean            @default(false) // counted in kg-per-MT norm check
+  kgPerUnit           Decimal?           @db.Decimal(10, 4) // conversion for norm check when unit != kg
+  active              Boolean            @default(true)
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  dispatches   ConsumableDispatch[]
+  stock        ConsumableStock[]
+  consumptions ConsumableConsumption[]
+  requests     ConsumableRequest[]
+}
+
+model ConsumableDispatch {
+  id             String         @id @default(cuid())
+  siteId         String
+  site           Site           @relation(fields: [siteId], references: [id])
+  itemId         String
+  item           ConsumableItem @relation(fields: [itemId], references: [id])
+  qty            Decimal        @db.Decimal(12, 3)
+  dispatchDate   DateTime       @db.Date
+  photoUrl       String?
+  vehicleRef     String?
+  dispatchedById String
+  dispatchedBy   User           @relation("ConsDispatchedBy", fields: [dispatchedById], references: [id])
+  receivedQty    Decimal?       @db.Decimal(12, 3)
+  receivedAt     DateTime?
+  receivedById   String?
+  receivedBy     User?          @relation("ConsReceivedBy", fields: [receivedById], references: [id])
+  shortReceipt   Boolean        @default(false)
+  receiptRemark  String?
+  createdAt      DateTime       @default(now())
+  voidedAt       DateTime?
+  voidReason     String?
+
+  @@index([siteId, dispatchDate])
+}
+
+model ConsumableStock {
+  id        String         @id @default(cuid())
+  siteId    String
+  site      Site           @relation(fields: [siteId], references: [id])
+  itemId    String
+  item      ConsumableItem @relation(fields: [itemId], references: [id])
+  qtyOnHand Decimal        @default(0) @db.Decimal(12, 3)
+  updatedAt DateTime       @updatedAt
+
+  @@unique([siteId, itemId])
+}
+
+model ConsumableConsumption {
+  id          String         @id @default(cuid())
+  siteId      String
+  site        Site           @relation(fields: [siteId], references: [id])
+  itemId      String
+  item        ConsumableItem @relation(fields: [itemId], references: [id])
+  jobId       String
+  job         Job            @relation(fields: [jobId], references: [id])
+  stageId     String?
+  stage       Stage?         @relation(fields: [stageId], references: [id])
+  date        DateTime       @db.Date
+  qty         Decimal        @db.Decimal(12, 3)
+  remark      String?
+  enteredById String
+  enteredBy   User           @relation(fields: [enteredById], references: [id])
+  createdAt   DateTime       @default(now())
+  voidedAt    DateTime?
+  voidReason  String?
+
+  @@index([siteId, date])
+  @@index([jobId])
+}
+
+enum ConsRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  FULFILLED
+}
+
+enum Fulfilment {
+  FROM_FACTORY
+  LOCAL_PURCHASE
+}
+
+model ConsumableRequest {
+  id              String            @id @default(cuid())
+  siteId          String
+  site            Site              @relation(fields: [siteId], references: [id])
+  itemId          String
+  item            ConsumableItem    @relation(fields: [itemId], references: [id])
+  qty             Decimal           @db.Decimal(12, 3)
+  reason          String
+  neededBy        DateTime          @db.Date
+  status          ConsRequestStatus @default(PENDING)
+  fulfilment      Fulfilment?
+  requestedById   String
+  requestedBy     User              @relation("ConsReqRequestedBy", fields: [requestedById], references: [id])
+  requestedAt     DateTime          @default(now())
+  decidedById     String?
+  decidedBy       User?             @relation("ConsReqDecidedBy", fields: [decidedById], references: [id])
+  decidedAt       DateTime?
+  decisionNote    String?
+  purchaseBillUrl String?
+  purchasePrice   Decimal?          @db.Decimal(12, 2)
+  purchasedAt     DateTime?
+  voidedAt        DateTime?
+  voidReason      String?
+
+  pettyCashTxn PettyCashTxn?
+
+  @@index([siteId, status])
+}
+
+// ---------------------------------------------------------------------------
+// Issues
+// ---------------------------------------------------------------------------
+
+enum IssueCategory {
+  MATERIAL_SHORTAGE
+  MACHINE_BREAKDOWN
+  MANPOWER_SHORT
+  DRAWING_CLARIFICATION
+  CLIENT_HOLD
+  POWER_WATER
+  SAFETY
+  PAYMENT
+  OTHER
+}
+
+enum Severity {
+  LOW
+  MEDIUM
+  HIGH
+  WORK_STOPPED
+}
+
+enum IssueStatus {
+  OPEN
+  ACKNOWLEDGED
+  IN_PROGRESS
+  RESOLVED
+}
+
+model Issue {
+  id             String        @id @default(cuid())
+  siteId         String
+  site           Site          @relation(fields: [siteId], references: [id])
+  jobId          String?
+  job            Job?          @relation(fields: [jobId], references: [id])
+  category       IssueCategory
+  severity       Severity
+  description    String
+  photoUrl       String?
+  neededFromHO   String?
+  status         IssueStatus   @default(OPEN)
+  raisedById     String
+  raisedBy       User          @relation("IssueRaisedBy", fields: [raisedById], references: [id])
+  raisedAt       DateTime      @default(now())
+  acknowledgedAt DateTime?
+  resolvedAt     DateTime?
+  resolutionNote String?
+  closedById     String?
+  closedBy       User?         @relation("IssueClosedBy", fields: [closedById], references: [id])
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  voidedAt       DateTime?
+  voidReason     String?
+
+  @@index([siteId, status, severity])
+}
+
+// ---------------------------------------------------------------------------
+// Daily plan & DPR
+// ---------------------------------------------------------------------------
+
+model DailyPlan {
+  id            String   @id @default(cuid())
+  siteId        String
+  site          Site     @relation(fields: [siteId], references: [id])
+  date          DateTime @db.Date
+  remark        String?
+  submittedById String
+  submittedBy   User     @relation(fields: [submittedById], references: [id])
+  submittedAt   DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  items DailyPlanItem[]
+
+  @@unique([siteId, date])
+}
+
+model DailyPlanItem {
+  id              String    @id @default(cuid())
+  planId          String
+  plan            DailyPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  jobId           String
+  job             Job       @relation(fields: [jobId], references: [id])
+  stageId         String
+  stage           Stage     @relation(fields: [stageId], references: [id])
+  targetQty       Decimal   @db.Decimal(12, 3)
+  manpowerPlanned Int
+  note            String?
+}
+
+enum DPRStatus {
+  DRAFT
+  SUBMITTED
+  MISSING
+}
+
+model DPR {
+  id            String    @id @default(cuid())
+  siteId        String
+  site          Site      @relation(fields: [siteId], references: [id])
+  date          DateTime  @db.Date
+  status        DPRStatus @default(DRAFT)
+  snapshot      Json? // compiled report frozen at submission
+  remark        String?
+  submittedById String?
+  submittedBy   User?     @relation(fields: [submittedById], references: [id])
+  submittedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([siteId, date])
+}
+
+// ---------------------------------------------------------------------------
+// Photos
+// ---------------------------------------------------------------------------
+
+enum PhotoKind {
+  DAILY_SLOT
+  MUSTER
+}
+
+model SitePhoto {
+  id         String    @id @default(cuid())
+  siteId     String
+  site       Site      @relation(fields: [siteId], references: [id])
+  kind       PhotoKind
+  date       DateTime  @db.Date
+  slot       Int? // 1..5 for DAILY_SLOT
+  url        String
+  latitude   Float
+  longitude  Float
+  accuracyM  Float
+  serverTime DateTime  @default(now())
+  caption    String?
+  jobId      String?
+  job        Job?      @relation(fields: [jobId], references: [id])
+  stageId    String?
+  stage      Stage?    @relation(fields: [stageId], references: [id])
+  takenById  String
+  takenBy    User      @relation(fields: [takenById], references: [id])
+  voidedAt   DateTime?
+  voidReason String?
+
+  @@index([siteId, date])
+}
+
+// ---------------------------------------------------------------------------
+// Audit & backdate unlocks
+// ---------------------------------------------------------------------------
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  siteId    String?
+  site      Site?    @relation(fields: [siteId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  action    String // CREATE / UPDATE / APPROVE / REJECT / VOID / LOGIN / UNLOCK ...
+  entity    String // model name
+  entityId  String?
+  oldValues Json?
+  newValues Json?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@index([siteId, createdAt])
+}
+
+enum UnlockModule {
+  ATTENDANCE
+  CONSUMPTION
+  PHOTOS
+  EXPENSES
+  STAGE_PROGRESS
+}
+
+/// Superadmin-granted permission to enter data for a past date. Logged in AuditLog too.
+model BackdateUnlock {
+  id           String       @id @default(cuid())
+  siteId       String
+  site         Site         @relation(fields: [siteId], references: [id])
+  module       UnlockModule
+  date         DateTime     @db.Date
+  reason       String
+  unlockedById String
+  unlockedBy   User         @relation(fields: [unlockedById], references: [id])
+  expiresAt    DateTime
+  createdAt    DateTime     @default(now())
+
+  @@index([siteId, module, date])
+}
