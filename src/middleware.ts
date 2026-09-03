@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC = ["/login", "/api/auth/login", "/manifest.webmanifest", "/icon.svg"];
+const PUBLIC = ["/login", "/api/auth/login", "/setup", "/api/setup", "/manifest.webmanifest", "/icon.svg"];
 
 /** Cheap gate: no cookie -> login. Real role checks happen in pages and API routes. */
 export function middleware(req: NextRequest) {

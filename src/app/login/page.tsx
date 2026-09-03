@@ -1,8 +1,19 @@
+export const dynamic = "force-dynamic";
+
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { LoginForm } from "./LoginForm";
+import { DbMissing } from "@/components/DbMissing";
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
+  if (!process.env.DATABASE_URL) return <DbMissing />;
+  try {
+    if ((await prisma.user.count()) === 0) redirect("/setup");
+  } catch (e) {
+    if (e && typeof e === "object" && "digest" in e) throw e; // Next redirect
+    return <DbMissing error={e instanceof Error ? e.message : String(e)} />;
+  }
   const user = await getSessionUser();
   if (user) redirect("/");
   const { next } = await searchParams;
