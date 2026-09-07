@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/Card";
 import { Bi } from "@/components/ui/Bi";
 import { LogoutButton } from "./LogoutButton";
 
-type Item = { href: string; en: string; hi: string; cap?: Capability; soon?: string };
+type Item = { href: string; en: string; hi: string; cap?: Capability; caps?: Capability[] };
 
 const SECTIONS: { title: string; hi: string; items: Item[] }[] = [
   {
@@ -13,13 +13,14 @@ const SECTIONS: { title: string; hi: string; items: Item[] }[] = [
     hi: "साइट",
     items: [
       { href: "/jobs", en: "Jobs & stages", hi: "काम और स्टेज", cap: "job.view" },
-      { href: "/workers", en: "Labour master", hi: "मज़दूर सूची", cap: "worker.view", soon: "Phase 2" },
-      { href: "/plan", en: "Daily plan", hi: "दैनिक योजना", cap: "plan.submit", soon: "Phase 2" },
-      { href: "/dpr", en: "Daily progress report", hi: "डीपीआर", cap: "dpr.view", soon: "Phase 3" },
-      { href: "/photos", en: "Site photos", hi: "साइट फोटो", cap: "dpr.view", soon: "Phase 4" },
-      { href: "/issues", en: "Issues", hi: "समस्याएँ", cap: "dpr.view", soon: "Phase 5" },
-      { href: "/consumables", en: "Consumables store", hi: "कंज़्यूमेबल स्टोर", cap: "dpr.view", soon: "Phase 6" },
-      { href: "/machines", en: "Machines", hi: "मशीनें", cap: "dpr.view", soon: "Phase 7" },
+      { href: "/workers", en: "Labour master", hi: "मज़दूर सूची", cap: "worker.view" },
+      { href: "/attendance", en: "Attendance", hi: "हाज़िरी", cap: "attendance.mark" },
+      { href: "/plan", en: "Daily plan", hi: "दैनिक योजना", cap: "plan.submit" },
+      { href: "/dpr", en: "Daily progress report", hi: "डीपीआर", cap: "dpr.view" },
+      { href: "/photos", en: "Site photos", hi: "साइट फोटो", cap: "dpr.view" },
+      { href: "/issues", en: "Issues", hi: "समस्याएँ", cap: "dpr.view" },
+      { href: "/consumables", en: "Consumables store", hi: "कंज़्यूमेबल स्टोर", cap: "dpr.view" },
+      { href: "/machines", en: "Machines", hi: "मशीनें", cap: "dpr.view" },
       { href: "/sop", en: "Daily routine (SOP)", hi: "रोज़ का काम" },
     ],
   },
@@ -27,9 +28,9 @@ const SECTIONS: { title: string; hi: string; items: Item[] }[] = [
     title: "Money",
     hi: "पैसा",
     items: [
-      { href: "/petty-cash", en: "Petty cash", hi: "पेटी कैश", cap: "money.view", soon: "Phase 8" },
-      { href: "/wages", en: "Wage sheets", hi: "मज़दूरी शीट", cap: "wage.view", soon: "Phase 8" },
-      { href: "/advances", en: "Advances", hi: "एडवांस", cap: "advance.approve", soon: "Phase 8" },
+      { href: "/petty-cash", en: "Petty cash", hi: "पेटी कैश", caps: ["money.view", "petty.expense", "petty.request"] },
+      { href: "/advances", en: "Worker advances", hi: "एडवांस", caps: ["advance.approve", "advance.request"] },
+      { href: "/wages", en: "Wage sheets", hi: "मज़दूरी शीट", cap: "wage.view" },
     ],
   },
   {
@@ -38,6 +39,9 @@ const SECTIONS: { title: string; hi: string; items: Item[] }[] = [
     items: [
       { href: "/admin/users", en: "Users & passwords", hi: "यूज़र और पासवर्ड", cap: "user.manage" },
       { href: "/admin/sites", en: "Sites", hi: "साइट", cap: "site.manage" },
+      { href: "/admin/holidays", en: "Site holidays", hi: "छुट्टियाँ", cap: "holiday.manage" },
+      { href: "/admin/items", en: "Consumable item master", hi: "आइटम सूची", cap: "consumable.approve" },
+      { href: "/admin/unlocks", en: "Unlock past date", hi: "पुरानी तारीख़ खोलें", cap: "backdate.unlock" },
       { href: "/admin/audit", en: "Audit log", hi: "ऑडिट लॉग", cap: "audit.view" },
     ],
   },
@@ -45,6 +49,10 @@ const SECTIONS: { title: string; hi: string; items: Item[] }[] = [
 
 export default async function MorePage() {
   const user = (await getSessionUser())!;
+  const allowed = (i: Item) => {
+    if (i.caps) return i.caps.some((c) => can(user.role, c));
+    return !i.cap || can(user.role, i.cap);
+  };
   return (
     <div className="space-y-4">
       <Card>
@@ -59,26 +67,18 @@ export default async function MorePage() {
           <LogoutButton />
         </div>
       </Card>
-
       {SECTIONS.map((s) => {
-        const items = s.items.filter((i) => !i.cap || can(user.role, i.cap));
-        if (!items.length) return null; // hidden entirely for roles without access
+        const items = s.items.filter(allowed);
+        if (!items.length) return null; // sections a role cannot use are not rendered at all
         return (
           <Card key={s.title} title={s.title} hi={s.hi}>
             <ul className="divide-y">
               {items.map((i) => (
                 <li key={i.href}>
-                  {i.soon ? (
-                    <div className="flex min-h-[52px] items-center justify-between py-2 text-slate-400">
-                      <Bi en={i.en} hi={i.hi} />
-                      <span className="text-xs">{i.soon}</span>
-                    </div>
-                  ) : (
-                    <Link href={i.href} className="flex min-h-[52px] items-center justify-between py-2">
-                      <Bi en={i.en} hi={i.hi} className="font-semibold" />
-                      <span className="text-slate-400">›</span>
-                    </Link>
-                  )}
+                  <Link href={i.href} className="flex min-h-[52px] items-center justify-between py-2">
+                    <Bi en={i.en} hi={i.hi} className="font-semibold" />
+                    <span className="text-slate-400">›</span>
+                  </Link>
                 </li>
               ))}
             </ul>

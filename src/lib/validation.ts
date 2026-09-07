@@ -221,3 +221,148 @@ export const issueActionSchema = z.object({
   action: z.enum(["ACKNOWLEDGE", "IN_PROGRESS", "RESOLVE"]),
   note: z.string().trim().max(500).optional().or(z.literal("")),
 });
+
+// ---- Phase 6 ----
+export const consCategorySchema = z.enum(["WELDING_ELECTRODE", "MIG_WIRE", "GAS", "GRINDING", "CUTTING", "HAND_TOOL", "PPE_SAFETY", "PAINT", "HARDWARE", "OTHER"]);
+
+export const itemSchema = z.object({
+  name: z.string().trim().min(2).max(100),
+  category: consCategorySchema,
+  unit: z.string().trim().min(1).max(20),
+  reorderLevel: z.coerce.number().min(0).max(999999).default(0),
+  isWeldingConsumable: z.boolean().default(false),
+  kgPerUnit: z.coerce.number().positive().max(10000).optional().nullable(),
+  active: z.boolean().default(true),
+});
+
+export const consDispatchSchema = z.object({
+  siteId: z.string().min(1),
+  itemId: z.string().min(1),
+  qty: z.coerce.number().positive().max(999999),
+  dispatchDate: dateKey,
+  photoUrl: z.string().max(500).optional().or(z.literal("")),
+  vehicleRef: z.string().trim().max(80).optional().or(z.literal("")),
+});
+
+export const consReceiveSchema = z.object({
+  receivedQty: z.coerce.number().min(0).max(999999),
+  remark: z.string().trim().max(300).optional().or(z.literal("")),
+});
+
+export const consumeSchema = z.object({
+  itemId: z.string().min(1),
+  jobId: z.string().min(1),
+  stageId: z.string().optional().nullable(),
+  date: dateKey,
+  qty: z.coerce.number().positive().max(999999),
+  remark: z.string().trim().max(200).optional().or(z.literal("")),
+});
+
+export const consRequestSchema = z.object({
+  itemId: z.string().min(1),
+  qty: z.coerce.number().positive().max(999999),
+  reason: z.string().trim().min(3).max(300),
+  neededBy: dateKey,
+});
+
+export const consDecideSchema = z.object({
+  decision: z.enum(["APPROVED", "REJECTED"]),
+  fulfilment: z.enum(["FROM_FACTORY", "LOCAL_PURCHASE"]).optional().nullable(),
+  note: z.string().trim().max(300).optional().or(z.literal("")),
+}).refine((v) => v.decision === "REJECTED" || !!v.fulfilment, { message: "Choose how it will be fulfilled", path: ["fulfilment"] });
+
+export const consCloseSchema = z.object({
+  price: money,
+  billPhotoUrl: z.string().min(1, "Bill photo is required").max(500),
+});
+
+// ---- Phase 7 ----
+export const machineTypeSchema = z.enum(["WELDING_MACHINE", "GRINDER", "GAS_CUTTING_SET", "DRILLING_MACHINE", "CHAIN_PULLEY_BLOCK", "DG_SET", "COMPRESSOR", "OTHER"]);
+export const conditionSchema = z.enum(["GOOD", "AVERAGE", "NEEDS_REPAIR"]);
+
+export const machineSchema = z.object({
+  type: machineTypeSchema,
+  make: z.string().trim().max(80).optional().or(z.literal("")),
+  model: z.string().trim().max(80).optional().or(z.literal("")),
+  serialNo: z.string().trim().max(80).optional().or(z.literal("")),
+});
+
+export const machineDispatchSchema = z.object({
+  direction: z.enum(["TO_SITE", "TO_FACTORY"]),
+  siteId: z.string().min(1),
+  dispatchDate: dateKey,
+  condition: conditionSchema,
+  photoUrl: z.string().max(500).optional().or(z.literal("")),
+  remark: z.string().trim().max(300).optional().or(z.literal("")),
+});
+
+export const machineReceiveSchema = z.object({
+  condition: conditionSchema,
+  photoUrl: z.string().max(500).optional().or(z.literal("")),
+  remark: z.string().trim().max(300).optional().or(z.literal("")),
+});
+
+export const machineStatusSchema = z.object({ status: z.enum(["RUNNING", "IDLE", "UNDER_REPAIR"]) });
+
+export const ticketSchema = z.object({
+  problem: z.string().trim().min(5).max(500),
+  raisedOn: dateKey,
+});
+
+export const ticketUpdateSchema = z.object({
+  repairType: z.enum(["IN_HOUSE", "SENT_OUT"]).optional().nullable(),
+  repairedBy: z.string().trim().max(100).optional().or(z.literal("")),
+  repairCost: z.coerce.number().min(0).max(99999999).optional().nullable(),
+  downtimeDays: z.coerce.number().min(0).max(3650).optional().nullable(),
+  parts: z.array(z.object({ item: z.string().trim().min(1).max(100), qty: z.coerce.number().positive().max(1000), price: z.coerce.number().min(0).max(9999999) })).max(30).optional(),
+  resolve: z.boolean().default(false),
+  verificationNote: z.string().trim().max(500).optional().or(z.literal("")),
+});
+
+// ---- Phase 8 ----
+export const pettyRequestSchema = z.object({
+  amount: money.refine((v) => v > 0, "Amount must be more than 0"),
+  reason: z.string().trim().min(3).max(300),
+  urgency: z.enum(["NORMAL", "URGENT", "WORK_STOPPED"]).default("NORMAL"),
+});
+
+export const pettyDecideSchema = z.object({
+  decision: z.enum(["APPROVED", "REJECTED"]),
+  note: z.string().trim().max(300).optional().or(z.literal("")),
+});
+
+export const pettySentSchema = z.object({
+  mode: z.enum(["UPI", "BANK", "CASH"]),
+  ref: z.string().trim().max(80).optional().or(z.literal("")),
+});
+
+export const expenseSchema = z.object({
+  date: dateKey,
+  amount: money.refine((v) => v > 0, "Amount must be more than 0"),
+  category: z.enum(["LABOUR_FOOD", "LOCAL_TRANSPORT", "SMALL_PURCHASE", "HARDWARE", "MEDICAL", "MISC"]),
+  description: z.string().trim().min(3).max(300),
+  paidTo: z.string().trim().max(100).optional().or(z.literal("")),
+  billPhotoUrl: z.string().min(1, "Bill photo is required").max(500),
+});
+
+export const reconcileSchema = z.object({
+  month: dateKey, // first of month
+  physicalCash: money,
+  note: z.string().trim().max(300).optional().or(z.literal("")),
+});
+
+export const advanceRequestSchema = z.object({
+  workerId: z.string().min(1),
+  amount: money.refine((v) => v > 0, "Amount must be more than 0"),
+  reason: z.string().trim().min(3).max(300),
+});
+
+export const advanceDecideSchema = z.object({
+  decision: z.enum(["APPROVED", "REJECTED"]),
+  note: z.string().trim().max(300).optional().or(z.literal("")),
+});
+
+export const wageGenerateSchema = z.object({
+  period: z.enum(["WEEKLY", "MONTHLY"]),
+  start: dateKey,
+});

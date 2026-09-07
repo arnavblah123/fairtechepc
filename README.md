@@ -4,19 +4,19 @@ Mobile-first web app for supervising a remote fabrication site. Supervisors upda
 
 **Stack:** Next.js 15 (App Router) · TypeScript · Tailwind CSS · Prisma · Postgres (Neon free tier) · Vercel free tier · Vercel Blob for photos (from Phase 4).
 
-## What is built so far
+## What is built
 
-| Phase | Module | Status |
-| --- | --- | --- |
-| 1 | Login, roles, user management, sites, jobs, stages | ✅ Ready to test |
-| 2 | Attendance, labour master, daily plan | ⏳ next |
-| 3 | Stage progress, DPR | ⏳ |
-| 4 | Geotagged photos | ⏳ |
-| 5 | Issues | ⏳ |
-| 6 | Consumables | ⏳ |
-| 7 | Machines | ⏳ |
-| 8 | Petty cash, wages, advances | ⏳ |
-| 9 | Superadmin dashboard and exports | ⏳ |
+| Module | Status |
+| --- | --- |
+| Login, roles, user management, sites, jobs, stages | ✅ |
+| Labour master, attendance (muster photo), holidays, daily plan | ✅ |
+| Stage progress, DPR (compile, submit, print) | ✅ |
+| Geotagged 5-slot daily photos, gallery | ✅ |
+| Issues with escalation | ✅ |
+| Consumables: dispatch/receive, consumption, request→approval→purchase, item master, norm check | ✅ |
+| Machines: register, dispatch/return, status, breakdown tickets with sign-off | ✅ |
+| Petty cash wallet, expenses with bill photos, reconciliation; advances; wage sheets | ✅ |
+| Superadmin exception dashboard with one-tap approvals and progress chart | ✅ |
 
 The database schema for **all** phases is already in `prisma/schema.prisma`, so later phases add screens, not migrations.
 
@@ -74,6 +74,16 @@ About 15 minutes, all in the browser. No credit card, nothing to install on your
 ### Step 6: Put it on phones like an app
 
 Open the link in Chrome on Android → menu (⋮) → **Add to Home screen**. Do this on the site in-charge's and each supervisor's phone. Create their logins from **More → Users**.
+
+### Photo storage (required for photos and bills)
+
+Photos (muster, site photos, bills) are stored in **Vercel Blob**:
+
+1. In your Vercel project open **Storage** → **Create Database** → choose **Blob** → create (or **Connect** an existing Blob store).
+2. Connecting it adds `BLOB_READ_WRITE_TOKEN` to the project automatically.
+3. **Deployments** → ⋯ → **Redeploy**.
+
+Until Blob is connected, photo uploads show a clear error telling you to connect it; everything else works.
 
 ### Updating later
 
