@@ -47,6 +47,17 @@ export function errorResponse(err: unknown): Response {
     if (err.code === "P2025") return NextResponse.json({ error: "Record not found" }, { status: 404 });
   }
   console.error(err);
+  // Surface deployment problems clearly instead of a generic 500.
+  const msg = err instanceof Error ? err.message : "";
+  if (msg.includes("SESSION_SECRET")) {
+    return NextResponse.json(
+      { error: "Server setup problem: the SESSION_SECRET variable is missing or too short in Vercel. Add it under Settings → Environment Variables (any random text, 30+ characters, all environments) and Redeploy." },
+      { status: 500 },
+    );
+  }
+  if (err instanceof Prisma.PrismaClientInitializationError) {
+    return NextResponse.json({ error: "Cannot reach the database. Check the Storage connection in Vercel and Redeploy." }, { status: 500 });
+  }
   return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
 }
 
