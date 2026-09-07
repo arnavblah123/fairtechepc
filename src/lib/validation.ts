@@ -122,3 +122,102 @@ export const STAGE_PRESETS = [
   "Blasting/Painting",
   "Dispatch/Erection",
 ];
+
+// ---- Phase 2 ----
+export const tradeSchema = z.enum(["FITTER", "WELDER", "GRINDER", "GAS_CUTTER", "HELPER", "RIGGER", "PAINTER"]);
+export const wageTypeSchema = z.enum(["PER_HOUR", "PER_DAY"]);
+
+export const workerSchema = z.object({
+  name: z.string().trim().min(2).max(80),
+  phone: z.string().trim().max(15).optional().or(z.literal("")),
+  trade: tradeSchema,
+  joiningDate: dateKey,
+  wageType: wageTypeSchema,
+  contractorName: z.string().trim().max(80).optional().or(z.literal("")),
+  idDocRef: z.string().trim().max(60).optional().or(z.literal("")),
+  photoUrl: z.string().max(500).optional().or(z.literal("")),
+  active: z.boolean().default(true),
+});
+
+export const wageRateSchema = z.object({
+  rate: z.coerce.number().positive().max(100000),
+  otRate: z.coerce.number().positive().max(100000).optional().nullable(),
+  effectiveFrom: dateKey,
+});
+
+export const attendanceMarkSchema = z.object({
+  workerId: z.string().min(1),
+  date: dateKey,
+  status: z.enum(["PRESENT", "ABSENT", "HALF_DAY", "HOLIDAY"]),
+  inTime: z.string().regex(/^\d{2}:\d{2}$/).optional().nullable(),
+  outTime: z.string().regex(/^\d{2}:\d{2}$/).optional().nullable(),
+  otHours: z.coerce.number().min(0).max(16).default(0),
+  remark: z.string().trim().max(200).optional().or(z.literal("")),
+});
+
+export const musterSchema = z.object({
+  date: dateKey,
+  url: z.string().min(1).max(500),
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+  accuracyM: z.number().min(0).max(100),
+});
+
+export const holidaySchema = z.object({ siteId: z.string().min(1), date: dateKey, name: z.string().trim().min(2).max(80) });
+
+export const dailyPlanSchema = z.object({
+  date: dateKey,
+  remark: z.string().trim().max(500).optional().or(z.literal("")),
+  items: z
+    .array(
+      z.object({
+        jobId: z.string().min(1),
+        stageId: z.string().min(1),
+        targetQty: z.coerce.number().min(0).max(999999),
+        manpowerPlanned: z.coerce.number().int().min(0).max(10000),
+        note: z.string().trim().max(200).optional().or(z.literal("")),
+      }),
+    )
+    .min(1, "Add at least one line")
+    .max(50),
+});
+
+// ---- Phase 3 ----
+export const progressSchema = z.object({
+  stageId: z.string().min(1),
+  date: dateKey,
+  qtyDone: z.coerce.number().min(0).max(999999),
+  percentComplete: z.coerce.number().min(0).max(100),
+  remark: z.string().trim().max(300).optional().or(z.literal("")),
+  workers: z
+    .array(z.object({ workerId: z.string().min(1), hours: z.coerce.number().min(0.5).max(16), shift: z.enum(["DAY", "NIGHT"]).default("DAY") }))
+    .max(200)
+    .default([]),
+});
+
+export const dprSubmitSchema = z.object({ date: dateKey, remark: z.string().trim().max(1000).optional().or(z.literal("")) });
+
+// ---- Phase 4/5 ----
+export const sitePhotoSchema = z.object({
+  url: z.string().min(1).max(500),
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+  accuracyM: z.number().min(0).max(100),
+  caption: z.string().trim().max(200).optional().or(z.literal("")),
+  jobId: z.string().optional().nullable(),
+  stageId: z.string().optional().nullable(),
+});
+
+export const issueSchema = z.object({
+  category: z.enum(["MATERIAL_SHORTAGE", "MACHINE_BREAKDOWN", "MANPOWER_SHORT", "DRAWING_CLARIFICATION", "CLIENT_HOLD", "POWER_WATER", "SAFETY", "PAYMENT", "OTHER"]),
+  severity: z.enum(["LOW", "MEDIUM", "HIGH", "WORK_STOPPED"]),
+  description: z.string().trim().min(5).max(1000),
+  neededFromHO: z.string().trim().max(500).optional().or(z.literal("")),
+  photoUrl: z.string().max(500).optional().or(z.literal("")),
+  jobId: z.string().optional().nullable(),
+});
+
+export const issueActionSchema = z.object({
+  action: z.enum(["ACKNOWLEDGE", "IN_PROGRESS", "RESOLVE"]),
+  note: z.string().trim().max(500).optional().or(z.literal("")),
+});

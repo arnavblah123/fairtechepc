@@ -92,9 +92,9 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
           </ol>
         )}
         {can(user.role, "stage.progress") && stages.length > 0 && (
-          <p className="mt-3 text-xs text-slate-500">
-            <Bi en="Daily stage progress entry arrives in Phase 3." hi="दैनिक स्टेज प्रगति फेज़ 3 में आएगी।" />
-          </p>
+          <Link href={`/jobs/${job.id}/progress`} className="mt-3 flex min-h-[52px] items-center justify-center rounded-xl bg-brand font-semibold text-white">
+            <Bi en="Update today's progress" hi="आज की प्रगति भरें" />
+          </Link>
         )}
       </Card>
 
