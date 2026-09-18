@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import type { ExpenseCategory, PettyTxnType, Urgency } from "@prisma/client";
+import type { PettyCategory, PettyTxnType, Urgency } from "@prisma/client";
 import { api, useSubmit } from "@/lib/client";
 import { Button } from "@/components/ui/Button";
 import { Input, Select, Textarea } from "@/components/ui/Field";
@@ -14,8 +14,8 @@ import { DeleteButton } from "@/components/forms/DeleteButton";
 import { formatDate, formatINR, titleCase } from "@/lib/format";
 
 type Req = { id: string; amount: number; reason: string; urgency: Urgency; status: string; by: string; mode: string | null; note: string | null };
-type Txn = { id: string; date: string; type: PettyTxnType; amount: number; category: ExpenseCategory | null; description: string; paidTo: string | null; bill: string | null; by: string };
-const CATEGORIES: [ExpenseCategory, string, string][] = [
+type Txn = { id: string; date: string; type: PettyTxnType; amount: number; category: PettyCategory | null; description: string; paidTo: string | null; bill: string | null; by: string };
+const CATEGORIES: [PettyCategory, string, string][] = [
   ["LABOUR_FOOD", "Labour food", "मज़दूर खाना"],
   ["LOCAL_TRANSPORT", "Local transport", "लोकल ट्रांसपोर्ट"],
   ["SMALL_PURCHASE", "Small purchase", "छोटी खरीद"],
@@ -35,7 +35,7 @@ export function PettyBoard(props: {
   const [amount, setAmount] = useState("");
   const [reason, setReason] = useState("");
   const [urgency, setUrgency] = useState<Urgency>("NORMAL");
-  const [category, setCategory] = useState<ExpenseCategory>("LABOUR_FOOD");
+  const [category, setCategory] = useState<PettyCategory>("LABOUR_FOOD");
   const [paidTo, setPaidTo] = useState("");
   const [bill, setBill] = useState("");
   const [physical, setPhysical] = useState("");
@@ -80,7 +80,7 @@ export function PettyBoard(props: {
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-2">
               <Input label="Amount (₹)" hi="राशि" value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="numeric" required />
-              <Select label="Category" hi="प्रकार" value={category} onChange={(e) => setCategory(e.target.value as ExpenseCategory)}>
+              <Select label="Category" hi="प्रकार" value={category} onChange={(e) => setCategory(e.target.value as PettyCategory)}>
                 {CATEGORIES.map(([v, en, hi]) => (<option key={v} value={v}>{en} / {hi}</option>))}
               </Select>
             </div>
@@ -162,7 +162,9 @@ export function PettyBoard(props: {
                   </div>
                   <div className="flex items-center gap-2">
                     <PhotoLink url={t.bill} size="h-10 w-10" />
-                    <b className={t.type === "EXPENSE" ? "text-red-600" : "text-green-700"}>{t.type === "EXPENSE" ? "−" : "+"}{formatINR(t.amount)}</b>
+                    <b className={t.type === "EXPENSE" || t.type === "RETURN" ? "text-red-600" : "text-green-700"}>
+                      {t.type === "EXPENSE" || t.type === "RETURN" ? "−" : "+"}{formatINR(t.amount)}
+                    </b>
                     {canDelete && <DeleteButton entity="PettyCashTxn" id={t.id} what="this cash entry" icon />}
                   </div>
                 </li>

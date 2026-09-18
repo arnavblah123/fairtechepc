@@ -8,6 +8,7 @@ import { Bi } from "@/components/ui/Bi";
 import { LinkButton } from "@/components/ui/Button";
 import { formatDate, formatINR, formatNum, istDateKey, dateKeyToDate, dateToKey, titleCase } from "@/lib/format";
 import { siteDashboard } from "@/lib/dashboard";
+import { balanceOf, pendingSpendOf } from "@/lib/ledger";
 import { ProgressChart } from "@/components/dashboard/ProgressChart";
 import { ApprovalRow } from "@/components/dashboard/ApprovalRow";
 import { PHOTO_SLOTS } from "@/lib/slots";
@@ -114,6 +115,7 @@ async function SiteHome() {
   ]);
   const filled = new Set(slots.map((s) => s.slot));
   const canMark = can(user.role, "attendance.mark");
+  const [myBalance, myPending] = await Promise.all([balanceOf(user.id), pendingSpendOf(user.id)]);
   const steps: { href: string; en: string; hi: string; done: boolean }[] = [
     { href: "/attendance", en: "Muster photo + attendance", hi: "मस्टर फोटो और हाज़िरी", done: muster > 0 && present > 0 },
     { href: "/plan", en: "Daily plan", hi: "दैनिक योजना", done: !!plan },
@@ -136,6 +138,22 @@ async function SiteHome() {
         <Stat label="Present today" hi="आज हाज़िर" value={`${present} / ${workers}`} tone={present ? "green" : "amber"} />
         <Stat label="Open issues" hi="खुली समस्याएँ" value={openIssues} tone={openIssues ? "red" : "green"} />
       </div>
+      {can(user.role, "expense.create") && (
+        <Link href="/expenses" className="block">
+          <Card>
+            <div className="grid grid-cols-2 gap-3 text-center">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">My cash in hand</div>
+                <div className={`text-2xl font-bold ${myBalance.inHand < 0 ? "text-red-600" : ""}`}>{formatINR(myBalance.inHand)}</div>
+              </div>
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Waiting approval</div>
+                <div className="text-2xl font-bold text-amber-600">{formatINR(myPending)}</div>
+              </div>
+            </div>
+          </Card>
+        </Link>
+      )}
       {/* The four things a supervisor needs to start without hunting through menus. */}
       <Card title="Need something?" hi="कुछ चाहिए?">
         <div className="grid grid-cols-2 gap-2">
@@ -149,6 +167,12 @@ async function SiteHome() {
             <Link href="/machines/repair" className="flex min-h-[92px] flex-col items-center justify-center gap-1 rounded-xl bg-slate-800 px-2 text-center text-white">
               <span className="text-2xl leading-none">🔧</span>
               <Bi en="Machine repair" hi="मशीन मरम्मत" className="text-sm font-semibold leading-tight" />
+            </Link>
+          )}
+          {can(user.role, "expense.create") && (
+            <Link href="/expenses/new" className="flex min-h-[92px] flex-col items-center justify-center gap-1 rounded-xl bg-green-700 px-2 text-center text-white">
+              <span className="text-2xl leading-none">💵</span>
+              <Bi en="Add expense" hi="खर्च भरें" className="text-sm font-semibold leading-tight" />
             </Link>
           )}
           {can(user.role, "issue.raise") && (
@@ -196,7 +220,7 @@ async function AdminDashboard() {
     );
   }
   const d = await siteDashboard(site.id);
-  const pendingCount = d.pendingCons.length + d.pendingPetty.length + d.pendingAdv.length;
+  const pendingCount = d.pendingCons.length + d.pendingPetty.length + d.pendingAdv.length + d.pendingExpenses.length;
   const workStopped = d.openIssues.filter((i) => i.severity === "WORK_STOPPED");
 
   return (
@@ -237,10 +261,14 @@ async function AdminDashboard() {
           <Stat label="Manpower" hi="मज़दूर" value={`${formatNum(d.present, 1)}${d.planned !== null ? ` / ${d.planned} planned` : ` / ${d.workersActive}`}`}
             tone={d.planned !== null && d.present < d.planned ? "amber" : "slate"} />
         </Link>
-        <Link href="/petty-cash">
-          <Stat label="Petty cash" hi="पेटी कैश" value={formatINR(d.pettyBalance)} tone={d.pettyBalance < d.pettyThreshold ? "red" : "green"} />
+        <Link href="/cash">
+          <Stat label="Cash on site" hi="साइट पर कैश" value={formatINR(d.pettyBalance)} tone={d.pettyBalance < d.pettyThreshold ? "red" : "green"} />
         </Link>
-        <Stat label="Burn / day" hi="रोज़ खर्च" value={formatINR(Math.round(d.burnRate))} />
+        {/* Cash with people equals the site book by construction, so show the
+            rate of spend here instead; the per-person split sits in the card below. */}
+        <Link href="/expenses">
+          <Stat label="Burn / day" hi="रोज़ खर्च" value={formatINR(Math.round(d.burnRate))} />
+        </Link>
       </div>
 
       {/* Pending approvals */}
@@ -262,6 +290,9 @@ async function AdminDashboard() {
             ))}
             {d.pendingAdv.map((r) => (
               <ApprovalRow key={r.id} endpoint={`/api/advances/${r.id}/decide`} label={<>🧾 Advance: {formatINR(r.amount)}</>} sub={r.sub} />
+            ))}
+            {d.pendingExpenses.map((r) => (
+              <ApprovalRow key={r.id} endpoint={`/api/expenses/${r.id}/decide`} label={<>🧾 {formatINR(r.amount)} — {r.label}</>} sub={r.sub} />
             ))}
           </ul>
         )}
@@ -317,6 +348,55 @@ async function AdminDashboard() {
               </li>
             ))}
           </ul>
+        )}
+      </Card>
+
+      {/* Petty cash expenses — the bulk of day-to-day spending */}
+      <Card
+        title="Petty cash this month"
+        hi="इस महीने का खर्च"
+        action={<Link href="/expenses" className="text-sm font-semibold text-brand">All →</Link>}
+      >
+        <div className="mb-3 flex items-baseline justify-between">
+          <span className="text-2xl font-bold">{formatINR(d.monthTotal)}</span>
+          {d.pendingExpenses.length > 0 && (
+            <Link href="/expenses?status=PENDING" className="rounded-full bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-800">
+              {d.pendingExpenses.length} waiting
+            </Link>
+          )}
+        </div>
+        {d.spendByCategory.length === 0 ? (
+          <p className="text-sm text-slate-500">Nothing approved this month yet.</p>
+        ) : (
+          <ul className="space-y-1.5">
+            {d.spendByCategory.slice(0, 6).map((c) => {
+              const pct = d.monthTotal > 0 ? Math.round((c.amount / d.monthTotal) * 100) : 0;
+              return (
+                <li key={c.name}>
+                  <div className="flex justify-between text-sm">
+                    <span className="min-w-0 truncate">{c.name}</span>
+                    <span className="shrink-0 font-semibold">{formatINR(c.amount)}</span>
+                  </div>
+                  <div className="mt-0.5 h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                    <div className="h-full bg-brand" style={{ width: `${pct}%` }} />
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        {d.cashHolders.length > 0 && (
+          <div className="mt-3 border-t pt-2">
+            <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Cash in hand</div>
+            <ul className="space-y-0.5 text-sm">
+              {d.cashHolders.map((h) => (
+                <li key={h.holderId} className="flex justify-between">
+                  <span>{h.name}</span>
+                  <b className={h.needsReconcile ? "text-red-600" : ""}>{formatINR(h.inHand)}</b>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
       </Card>
 

@@ -26,8 +26,10 @@ Open the app from the home-screen icon. Login once; it stays logged in.
    **सिर्फ़ आज और कल की एंट्री** (कल की सुबह 10 बजे तक)। पुरानी तारीख के लिए एमडी से अनलॉक कराएँ।
 4. **Nothing can be bought without approval.** Raise a request in the app. Arnav approves, then purchase in Pune places the order. When the material arrives, **inward it** and enter the quantity actually received — if it is short, write what is missing.
    **बिना मंज़ूरी कुछ न खरीदें।** ऐप में रिक्वेस्ट डालें। अरनव मंज़ूरी देंगे, पुणे से ऑर्डर होगा। माल आने पर **इनवर्ड करें** और जितना मिला वही मात्रा भरें; कम हो तो लिखें।
-5. **Every expense needs a bill photo.** No bill, no entry.
-   **हर खर्च की बिल फोटो ज़रूरी।** बिना बिल एंट्री नहीं।
+5. **Every purchase needs a bill photo.** Paying a person (labour, tempo, tea) needs no bill, but say who it was paid to — the same name every time.
+   **हर खरीद की बिल फोटो ज़रूरी।** किसी को पैसे दिए तो बिल नहीं चाहिए, पर नाम ज़रूर लिखें — हर बार वही नाम।
+6. **Your cash in hand is on your home screen.** It goes down only when Arnav approves your expense. If it does not match the cash in your pocket, tell Arnav the same day.
+   **आपके पास कितना कैश है वह होम स्क्रीन पर दिखता है।** अरनव की मंज़ूरी के बाद ही घटता है। जेब के कैश से मेल न खाए तो उसी दिन बताएँ।
 6. **Machine breakdown:** raise a ticket the same day. When repaired, the person who checked it must sign off.
    **मशीन खराब:** उसी दिन टिकट बनाएँ। ठीक होने पर जाँचने वाला साइन-ऑफ करे।
 7. **Work stopped?** Raise an Issue with severity "Work stopped" immediately. Do not wait for evening.
@@ -40,6 +42,7 @@ Open the app from the home-screen icon. Login once; it stays logged in.
 On the **home screen** there are four big buttons — no need to hunt through menus:
 होम स्क्रीन पर चार बड़े बटन हैं:
 
+* **Add expense / खर्च भरें** — every rupee spent from site cash, the same day. A purchase needs a bill photo; paying a person does not. Say honestly whether **you** paid or the office paid the shop — if you pick wrong, your cash will not tally at month end.
 * **Ask for material / सामान माँगें** — raise a request for any consumable. Arnav approves, Pune orders it.
 * **Machine repair / मशीन मरम्मत** — pick the machine that is not working and say what is wrong.
 * **Raise issue / समस्या बताएँ** — anything that is holding up work.

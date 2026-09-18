@@ -4,6 +4,8 @@ import { istDateKey, istHour, addDays, dateKeyToDate, dateToKey } from "./format
 import { jobStageSummary, plannedPercentByDate } from "./jobs";
 import { weldingNormForJob } from "./consumables";
 import { pettyBalance, pettyBurnRate } from "./petty";
+import { balancesBySite } from "./ledger";
+import { toPaise, toRupees } from "./money";
 
 export type SiteDash = Awaited<ReturnType<typeof siteDashboard>>;
 
@@ -29,6 +31,28 @@ export async function siteDashboard(siteId: string) {
       pettyBurnRate(siteId),
       prisma.worker.count({ where: { siteId, active: true } }),
     ]);
+
+  // Petty cash expenses: what is waiting on Arnav, and where the money went this month.
+  const monthStart = dateKeyToDate(today.slice(0, 8) + "01");
+  const [pendingExpenses, monthSpend, cashHolders] = await Promise.all([
+    prisma.expense.findMany({
+      where: { siteId, status: { in: ["PENDING", "QUERIED"] }, voidedAt: null },
+      orderBy: { date: "asc" },
+      include: { category: { select: { name: true } }, spentBy: { select: { name: true } } },
+    }),
+    prisma.expense.findMany({
+      where: { siteId, status: "APPROVED", voidedAt: null, date: { gte: monthStart } },
+      select: { amount: true, category: { select: { name: true } } },
+    }),
+    balancesBySite(siteId),
+  ]);
+  const byCategory = new Map<string, number>();
+  for (const e of monthSpend) byCategory.set(e.category.name, (byCategory.get(e.category.name) ?? 0) + toPaise(e.amount));
+  const spendByCategory = [...byCategory.entries()]
+    .map(([name, paise]) => ({ name, amount: toRupees(paise) }))
+    .sort((a, b) => b.amount - a.amount);
+  const monthTotal = toRupees(monthSpend.reduce((a, e) => a + toPaise(e.amount), 0));
+  const cashOnStreet = cashHolders.reduce((a, b) => a + b.inHand, 0);
 
   // DPR missing = yesterday was a working day with no submitted DPR (or today's, after cutoff).
   const dprMissingYesterday = !holidayY && dprY?.status !== "SUBMITTED";
@@ -89,6 +113,17 @@ export async function siteDashboard(siteId: string) {
     lowItems,
     pendingCons: pendingCons.map((r) => ({ id: r.id, label: `${r.item.name} × ${Number(r.qty)} ${r.item.unit}`, sub: `${r.reason} — ${r.requestedBy.name}` })),
     pendingPetty: pendingPetty.map((r) => ({ id: r.id, amount: Number(r.amount), sub: `${r.reason} — ${r.requestedBy.name}`, urgency: r.urgency })),
+    pendingExpenses: pendingExpenses.map((e) => ({
+      id: e.id,
+      amount: Number(e.amount),
+      label: `${e.category.name}: ${e.description}`,
+      sub: `${e.spentBy.name}${e.billPhotoUrl ? "" : e.entryType === "PURCHASE" ? " · no bill" : ""}`,
+      status: e.status,
+    })),
+    spendByCategory,
+    monthTotal,
+    cashHolders,
+    cashOnStreet,
     pendingAdv: pendingAdv.map((r) => ({ id: r.id, amount: Number(r.amount), sub: `${r.worker.code} ${r.worker.name}: ${r.reason}` })),
     openIssues: openIssues.map((i) => ({ id: i.id, severity: i.severity, category: i.category, description: i.description.slice(0, 100), ageHours: Math.round((Date.now() - i.raisedAt.getTime()) / 3600000) })),
     machineCounts,

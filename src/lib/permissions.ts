@@ -48,6 +48,12 @@ export const CAPABILITIES = {
   "machine.dispatch": ["SUPERADMIN"],
   "machine.receive": ["SITE_INCHARGE", "SUPERVISOR"],
   "machine.ticket": ["SUPERVISOR", "SITE_INCHARGE"],
+  // petty cash expenses
+  "expense.view": ["SUPERADMIN", "SITE_INCHARGE", "SUPERVISOR", "VIEWER"],
+  "expense.create": ["SUPERADMIN", "SITE_INCHARGE", "SUPERVISOR"],
+  "expense.approve": ["SUPERADMIN"],
+  "cash.view": ["SUPERADMIN"], // who is holding how much
+  "cash.move": ["SUPERADMIN"], // issue, take back or correct someone's cash
   // money
   "petty.request": ["SITE_INCHARGE", "SUPERVISOR"],
   "petty.approve": ["SUPERADMIN"],

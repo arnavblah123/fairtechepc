@@ -11,15 +11,16 @@ export const GET = withAuth("export.csv", async ({ user, req }) => {
     "petty-cash.csv",
     txns.map((t) => {
       const amt = Number(t.amount);
-      bal += t.type === "EXPENSE" ? -amt : amt;
+      const out = t.type === "EXPENSE" || t.type === "RETURN";
+      bal += out ? -amt : amt;
       return {
         Date: formatDate(t.date),
         Type: t.type,
         Category: t.category ? titleCase(t.category) : "",
         Description: t.description,
         "Paid to": t.paidTo ?? "",
-        In: t.type === "EXPENSE" ? "" : amt,
-        Out: t.type === "EXPENSE" ? amt : "",
+        In: out ? "" : amt,
+        Out: out ? amt : "",
         Balance: bal,
         "Entered by": t.enteredBy.name,
         Bill: t.billPhotoUrl ?? "",

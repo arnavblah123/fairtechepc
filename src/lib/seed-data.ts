@@ -62,6 +62,26 @@ export const ITEM_MASTER: { name: string; category: ConsumableCategory; unit: st
   { name: "Nuts & Bolts M20", category: "HARDWARE", unit: "nos", reorder: 100 },
 ];
 
+/**
+ * Spend categories. `requiresPerson` shows the labour picker so per-person
+ * totals group properly instead of splitting across spellings; `requiresMachine`
+ * asks which machine and what was wrong, so repair cost traces to the machine.
+ */
+export const EXPENSE_CATEGORIES = [
+  { slug: "material", name: "Material", requiresPerson: false, requiresMachine: false, sortOrder: 10 },
+  { slug: "labour-advance", name: "Labour advance", requiresPerson: true, requiresMachine: false, sortOrder: 20 },
+  { slug: "night-payment", name: "Night payment", requiresPerson: true, requiresMachine: false, sortOrder: 30 },
+  { slug: "transport", name: "Transport", requiresPerson: false, requiresMachine: false, sortOrder: 40 },
+  { slug: "food", name: "Food / tea", requiresPerson: false, requiresMachine: false, sortOrder: 50 },
+  { slug: "fuel", name: "Fuel", requiresPerson: false, requiresMachine: false, sortOrder: 60 },
+  { slug: "tools", name: "Tools", requiresPerson: false, requiresMachine: false, sortOrder: 70 },
+  { slug: "machine-maintenance", name: "Machine repair / maintenance", requiresPerson: false, requiresMachine: true, sortOrder: 75 },
+  { slug: "consumables", name: "Consumables", requiresPerson: false, requiresMachine: false, sortOrder: 78 },
+  { slug: "medical", name: "Medical", requiresPerson: false, requiresMachine: false, sortOrder: 80 },
+  { slug: "rent", name: "Rent", requiresPerson: false, requiresMachine: false, sortOrder: 85 },
+  { slug: "miscellaneous", name: "Miscellaneous", requiresPerson: false, requiresMachine: false, sortOrder: 90 },
+];
+
 function date(y: number, m: number, d: number) {
   return new Date(Date.UTC(y, m - 1, d));
 }
@@ -100,6 +120,11 @@ export async function runSeed(prisma: PrismaClient, opts: SeedOptions) {
     });
   }
   log(`Consumable items: ${ITEM_MASTER.length}`);
+
+  for (const c of EXPENSE_CATEGORIES) {
+    await prisma.expenseCategory.upsert({ where: { slug: c.slug }, update: {}, create: c });
+  }
+  log(`Expense categories: ${EXPENSE_CATEGORIES.length}`);
 
   if (!opts.sampleData) return { admin };
 

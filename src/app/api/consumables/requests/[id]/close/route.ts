@@ -5,6 +5,7 @@ import { audit } from "@/lib/audit";
 import { assertSiteAccess } from "@/lib/site";
 import { adjustStock } from "@/lib/consumables";
 import { istDateKey, dateKeyToDate } from "@/lib/format";
+import { post } from "@/lib/ledger";
 
 /**
  * Close out an approved LOCAL_PURCHASE: bill photo + price are mandatory.
@@ -31,6 +32,17 @@ export const POST = withAuth<{ id: string }>("consumable.receive", async ({ user
         consumableRequestId: r.id,
         enteredById: user.id,
       },
+    });
+    // Bought locally out of the closer's own cash, so debit their ledger too.
+    await post(tx, {
+      siteId: r.siteId,
+      holderId: user.id,
+      kind: "EXPENSE",
+      magnitude: body.price,
+      sourceType: "consumable_request",
+      sourceId: r.id,
+      memo: `Local purchase: ${r.item.name}`,
+      createdById: user.id,
     });
     await audit({ userId: user.id, siteId: r.siteId, action: "UPDATE", entity: "ConsumableRequest", entityId: r.id, oldValues: r, newValues: { status: "FULFILLED", price: body.price }, ip }, tx);
   });

@@ -7,7 +7,8 @@ export async function pettyBalance(siteId: string): Promise<number> {
   let bal = 0;
   for (const g of groups) {
     const amt = Number(g._sum.amount ?? 0);
-    bal += g.type === "EXPENSE" ? -amt : amt;
+    // Expenses and cash returned to head office both leave the site.
+    bal += g.type === "EXPENSE" || g.type === "RETURN" ? -amt : amt;
   }
   return bal;
 }

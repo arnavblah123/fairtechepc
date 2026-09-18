@@ -24,6 +24,7 @@ export type DeletableEntity =
   | "DPR"
   | "SitePhoto"
   | "Issue"
+  | "Expense"
   | "ConsumableDispatch"
   | "ConsumableConsumption"
   | "ConsumableRequest"
@@ -130,6 +131,27 @@ export const DELETABLE: Record<DeletableEntity, Handler> = {
   DPR: { label: "DPR", remove: softVoid("dPR") },
   SitePhoto: { label: "Photo", remove: softVoid("sitePhoto") },
   Issue: { label: "Issue", remove: softVoid("issue") },
+  Expense: {
+    label: "Expense",
+    remove: async (tx, id, reason) => {
+      const e = await tx.expense.update({ where: { id }, data: { voidedAt: new Date(), voidReason: reason } });
+      // Put the money back to whoever was debited, and drop it from the cash book.
+      const entries = await tx.cashLedger.findMany({ where: { expenseId: id, sourceType: "expense", reversedBy: { is: null } } });
+      for (const entry of entries) {
+        await tx.cashLedger.create({
+          data: {
+            siteId: entry.siteId, holderId: entry.holderId, kind: entry.kind,
+            amount: Number(entry.amount) * -1, sourceType: "reversal", sourceId: entry.sourceId,
+            postingKey: `reversal:${entry.id}:${entry.kind}`, expenseId: entry.expenseId, reversesId: entry.id,
+            memo: `Expense deleted: ${reason}`, createdById: entry.createdById,
+          },
+        });
+      }
+      const txn = await tx.pettyCashTxn.findUnique({ where: { expenseId: id } });
+      if (txn && !txn.voidedAt) await tx.pettyCashTxn.update({ where: { id: txn.id }, data: { voidedAt: new Date(), voidReason: reason } });
+      return { siteId: e.siteId };
+    },
+  },
   ConsumableDispatch: {
     label: "Stock dispatch",
     remove: async (tx, id, reason) => {

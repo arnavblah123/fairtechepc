@@ -62,6 +62,11 @@ model User {
   consRequestsRaised     ConsumableRequest[]       @relation("ConsReqRequestedBy")
   consRequestsOrdered    ConsumableRequest[]       @relation("ConsReqOrderedBy")
   jobMaterialsAdded      JobMaterial[]
+  expensesSpent          Expense[]                 @relation("ExpenseSpentBy")
+  expensesEntered        Expense[]                 @relation("ExpenseEnteredBy")
+  expensesDecided        Expense[]                 @relation("ExpenseDecidedBy")
+  cashLedger             CashLedger[]              @relation("LedgerHolder")
+  cashLedgerPosted       CashLedger[]              @relation("LedgerPostedBy")
   consRequestsDecided    ConsumableRequest[]       @relation("ConsReqDecidedBy")
   issuesRaised           Issue[]                   @relation("IssueRaisedBy")
   issuesClosed           Issue[]                   @relation("IssueClosedBy")
@@ -104,6 +109,9 @@ model Site {
   users             User[]
   jobs              Job[]
   jobMaterials      JobMaterial[]
+  expenses          Expense[]
+  parties           Party[]
+  cashLedger        CashLedger[]
   stages            Stage[]
   stageProgress     StageProgress[]
   workers           Worker[]
@@ -177,6 +185,7 @@ model Job {
   issues        Issue[]
   planItems     DailyPlanItem[]
   photos        SitePhoto[]
+  expenses      Expense[]
 }
 
 /// Consumables planned for a job before work starts. Requests are drawn against this.
@@ -310,6 +319,7 @@ model Worker {
   updatedAt      DateTime  @updatedAt
 
   wageRates  WageRate[]
+  expenses   Expense[]
   attendance Attendance[]
   advances   Advance[]
   wageSheets WageSheet[]
@@ -497,10 +507,11 @@ model PettyCashRequest {
 enum PettyTxnType {
   TOPUP
   EXPENSE
+  RETURN // unspent cash handed back to head office
   ADJUSTMENT
 }
 
-enum ExpenseCategory {
+enum PettyCategory {
   LABOUR_FOOD
   LOCAL_TRANSPORT
   SMALL_PURCHASE
@@ -516,7 +527,7 @@ model PettyCashTxn {
   date                DateTime           @db.Date
   type                PettyTxnType
   amount              Decimal            @db.Decimal(12, 2) // positive; sign determined by type
-  category            ExpenseCategory?
+  category            PettyCategory?
   description         String
   paidTo              String?
   billPhotoUrl        String?
@@ -527,6 +538,8 @@ model PettyCashTxn {
   enteredById         String
   enteredBy           User               @relation(fields: [enteredById], references: [id])
   createdAt           DateTime           @default(now())
+  expenseId           String?            @unique
+  expense             Expense?           @relation(fields: [expenseId], references: [id])
   voidedAt            DateTime?
   voidReason          String?
 
@@ -546,6 +559,183 @@ model PettyCashReconciliation {
   createdAt    DateTime @default(now())
 
   @@unique([siteId, month])
+}
+
+/// What kind of spend this is. Only a purchase can be expected to have a bill,
+/// so this — not the category — decides whether a receipt photo is required.
+enum EntryType {
+  PURCHASE // bill expected
+  PAYMENT // paid to a person, no bill
+  OTHER
+}
+
+/// Where the money came from. Company-paid spending belongs to the job cost but
+/// must NOT reduce anyone's cash in hand, so it posts no ledger row at all.
+enum PaymentSource {
+  WORKER_CASH // paid out of the cash this person is holding
+  COMPANY_DIRECT // office/bank paid the shop; no site cash moved
+}
+
+enum ExpenseStatus {
+  PENDING
+  APPROVED
+  QUERIED
+  REJECTED
+}
+
+enum PartyKind {
+  LABOUR
+  VENDOR
+  OTHER
+}
+
+/// Spend categories. `requiresPerson` shows the labour picker so per-person
+/// totals group properly; `requiresMachine` asks which machine and what was
+/// wrong, so a repair cost can be traced to the machine causing it.
+model ExpenseCategory {
+  id              String   @id @default(cuid())
+  slug            String   @unique
+  name            String
+  requiresPerson  Boolean  @default(false)
+  requiresMachine Boolean  @default(false)
+  sortOrder       Int      @default(500)
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  expenses Expense[]
+
+  @@index([active, sortOrder])
+}
+
+/// Every name money was paid to gets a ledger, whether a labourer or a shop.
+/// Names are matched on a normalised key so "Kamla Hardware" and "kamla
+/// hardware" land on one payee instead of two.
+model Party {
+  id             String    @id @default(cuid())
+  siteId         String
+  site           Site      @relation(fields: [siteId], references: [id])
+  kind           PartyKind @default(VENDOR)
+  name           String
+  normalizedName String
+  phone          String?
+  active         Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+
+  expenses Expense[]
+
+  @@unique([siteId, normalizedName])
+  @@index([siteId, kind])
+}
+
+/// One recorded spend. Raised on site, approved by the superadmin; approval is
+/// what posts money out of the spender's cash ledger.
+model Expense {
+  id         String          @id @default(cuid())
+  siteId     String
+  site       Site            @relation(fields: [siteId], references: [id])
+  date       DateTime        @db.Date
+  amount     Decimal         @db.Decimal(12, 2)
+  categoryId String
+  category   ExpenseCategory @relation(fields: [categoryId], references: [id])
+  entryType  EntryType       @default(PURCHASE)
+  paidFrom   PaymentSource   @default(WORKER_CASH)
+
+  /// What was actually bought. An amount with no description is unauditable months later.
+  description String
+  note        String?
+
+  jobId     String?
+  job       Job?     @relation(fields: [jobId], references: [id])
+  partyId   String?
+  party     Party?   @relation(fields: [partyId], references: [id])
+  payeeText String?
+  workerId  String?
+  worker    Worker?  @relation(fields: [workerId], references: [id])
+  machineId String?
+  machine   Machine? @relation(fields: [machineId], references: [id])
+
+  /// Filled when the category asks for a machine, so repeat faults are visible.
+  problem  String?
+  solution String?
+
+  billPhotoUrl String?
+
+  /// Whose cash this came out of. Approval debits this person's ledger.
+  spentById String
+  spentBy   User   @relation("ExpenseSpentBy", fields: [spentById], references: [id])
+
+  enteredById String
+  enteredBy   User   @relation("ExpenseEnteredBy", fields: [enteredById], references: [id])
+
+  status       ExpenseStatus @default(PENDING)
+  decidedById  String?
+  decidedBy    User?         @relation("ExpenseDecidedBy", fields: [decidedById], references: [id])
+  decidedAt    DateTime?
+  decisionNote String?
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  voidedAt   DateTime?
+  voidReason String?
+
+  ledgerEntries CashLedger[]
+  pettyCashTxn  PettyCashTxn?
+
+  @@index([siteId, status])
+  @@index([siteId, date])
+  @@index([spentById, status])
+  @@index([categoryId, date])
+  @@index([machineId])
+}
+
+enum LedgerKind {
+  ADVANCE // cash issued to a person
+  TOPUP // more cash issued
+  EXPENSE // approved spending out of their cash
+  RETURN // cash handed back to head office
+  ADJUSTMENT // superadmin correction, signed
+}
+
+/// Append-only cash-in-hand ledger. A person's balance is never a stored
+/// column: it is always the sum of these rows, so a mistake is corrected by
+/// posting a reversing row rather than editing history.
+///
+/// Sign convention, from the holder's point of view:
+///   ADVANCE/TOPUP  +   EXPENSE/RETURN  -   ADJUSTMENT  either way
+model CashLedger {
+  id       String     @id @default(cuid())
+  siteId   String
+  site     Site       @relation(fields: [siteId], references: [id])
+  holderId String
+  holder   User       @relation("LedgerHolder", fields: [holderId], references: [id])
+  kind     LedgerKind
+  amount   Decimal    @db.Decimal(12, 2) // signed
+
+  sourceType String // "expense" | "petty_request" | "manual" | "reversal"
+  sourceId   String?
+
+  /// "<sourceType>:<sourceId>:<kind>" — the unique index here is what stops a
+  /// retried approval from debiting anyone twice.
+  postingKey String @unique
+
+  expenseId String?
+  expense   Expense? @relation(fields: [expenseId], references: [id])
+
+  /// Set on a correcting row, pointing at the row it cancels. The correcting row
+  /// carries the same kind with the amount negated, so the advanced/spent
+  /// breakdown self-corrects and not just the total.
+  reversesId String?     @unique
+  reverses   CashLedger? @relation("LedgerReversal", fields: [reversesId], references: [id])
+  reversedBy CashLedger? @relation("LedgerReversal")
+
+  memo        String?
+  createdById String
+  createdBy   User     @relation("LedgerPostedBy", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@index([siteId, holderId, createdAt])
+  @@index([kind])
 }
 
 // ---------------------------------------------------------------------------
@@ -604,6 +794,7 @@ model Machine {
 
   dispatches MachineDispatch[]
   tickets    MachineTicket[]
+  expenses   Expense[]
 }
 
 enum DispatchDirection {

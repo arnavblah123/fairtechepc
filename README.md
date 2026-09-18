@@ -15,7 +15,8 @@ Mobile-first web app for supervising a remote fabrication site. Supervisors upda
 | Issues with escalation | ✅ |
 | Material plan per job, request → approval → purchase order → dispatch → inward & acceptance | ✅ |
 | Machines: owned or rented, dispatch/return, status, breakdown tickets with sign-off | ✅ |
-| Petty cash, advances, wage sheets | ✅ |
+| Petty cash expenses: cash-in-hand ledger, approval, reversals, spend analysis | ✅ |
+| Advances, wage sheets, site cash book | ✅ |
 | Superadmin exception dashboard with one-tap approvals | ✅ |
 | Delete (with reason + audit trail) on every record type | ✅ |
 
@@ -28,6 +29,44 @@ planned quantity, and the job's overall figure by weighting stages by their
 **planned days** — so a 25-day welding stage counts for more than a 6-day
 inspection. The dashboard compares that against where the plan says the job
 should be today.
+
+### Petty cash expenses
+
+Ported from the standalone Fairtech Petty Cash app, because day-to-day site
+spending is the highest-volume thing here.
+
+**Nobody's balance is a stored number.** Cash in hand is always the sum of an
+append-only ledger, so a mistake is corrected by posting a reversing row rather
+than editing history. Advances and top-ups add; approved spending and returned
+cash subtract.
+
+The flow: a supervisor records a spend from their phone → it counts against
+nothing until **you approve it** → approval debits that person's cash and books
+it in the site cash book. Withdrawing an approval puts the money back through a
+reversing row, and re-approving debits again with a fresh key so it is not
+swallowed as a duplicate.
+
+Each entry captures:
+
+* **What kind of spend** — only a *purchase* is expected to have a bill, so this,
+  not the category, decides whether a receipt photo is required. A payment to a
+  labourer has no bill and is not blocked for missing one.
+* **Whose money paid for it** — cash the supervisor is holding, or the office
+  paying the shop directly. Company-paid spending counts toward job cost but
+  posts no ledger row, because that cash never passed through anyone's hands.
+* **Category rules** — a labour category asks which worker (so per-person totals
+  group properly); machine repair asks which machine, what was wrong and what
+  was done, so a repair cost can be traced to the machine that keeps costing money.
+* **Payee** — names are matched on a normalised key, so "Kamla Hardware" and
+  "kamla hardware" land on one payee's total instead of two.
+
+Two figures are kept in step and cross-checked: the **site cash book** (money in
+and out of the site) and the **sum of every person's cash in hand**. If they
+drift apart the Cash in hand screen says so, with the amount.
+
+Deliberately left out of this port: offline queueing on the phone, S3 presigned
+uploads, and expense flags. Photos use the same Vercel Blob path as the rest of
+the app.
 
 ### Supervisor quick actions
 

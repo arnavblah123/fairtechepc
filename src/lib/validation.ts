@@ -410,3 +410,39 @@ export const wageGenerateSchema = z.object({
   period: z.enum(["WEEKLY", "MONTHLY"]),
   start: dateKey,
 });
+
+
+// ---- Petty cash expenses (ported from the standalone petty cash app) ----
+export const entryTypeSchema = z.enum(["PURCHASE", "PAYMENT", "OTHER"]);
+export const paymentSourceSchema = z.enum(["WORKER_CASH", "COMPANY_DIRECT"]);
+
+export const expenseEntrySchema = z.object({
+  date: dateKey,
+  amount: z.coerce.number().positive("Amount must be more than 0").max(9999999),
+  categoryId: z.string().min(1, "Choose a category"),
+  entryType: entryTypeSchema.default("PURCHASE"),
+  paidFrom: paymentSourceSchema.default("WORKER_CASH"),
+  description: z.string().trim().min(3, "Say what it was for").max(300),
+  note: z.string().trim().max(500).optional().or(z.literal("")),
+  jobId: z.string().optional().nullable(),
+  payeeText: z.string().trim().max(120).optional().or(z.literal("")),
+  workerId: z.string().optional().nullable(),
+  machineId: z.string().optional().nullable(),
+  problem: z.string().trim().max(300).optional().or(z.literal("")),
+  solution: z.string().trim().max(300).optional().or(z.literal("")),
+  billPhotoUrl: z.string().max(500).optional().or(z.literal("")),
+  /** Whose cash it came out of. Defaults to the person entering it. */
+  spentById: z.string().optional().nullable(),
+});
+
+export const expenseDecideSchema = z.object({
+  decision: z.enum(["APPROVED", "REJECTED", "QUERIED"]),
+  note: z.string().trim().max(500).optional().or(z.literal("")),
+});
+
+export const cashMoveSchema = z.object({
+  holderId: z.string().min(1),
+  kind: z.enum(["ADVANCE", "TOPUP", "RETURN", "ADJUSTMENT"]),
+  amount: z.coerce.number().max(9999999).refine((v) => v !== 0, "Amount cannot be zero"),
+  memo: z.string().trim().max(300).optional().or(z.literal("")),
+});

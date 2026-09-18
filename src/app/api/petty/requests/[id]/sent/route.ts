@@ -3,6 +3,7 @@ import { pettySentSchema } from "@/lib/validation";
 import { prisma } from "@/lib/prisma";
 import { audit } from "@/lib/audit";
 import { istDateKey, dateKeyToDate } from "@/lib/format";
+import { post } from "@/lib/ledger";
 
 /** Superadmin marks the money as sent; the wallet tops up. */
 export const POST = withAuth<{ id: string }>("petty.approve", async ({ user, req, params, ip }) => {
@@ -14,6 +15,17 @@ export const POST = withAuth<{ id: string }>("petty.approve", async ({ user, req
     await tx.pettyCashRequest.update({ where: { id: r.id }, data: { status: "SENT", sentAt: new Date(), sentMode: body.mode, sentRef: body.ref || null } });
     await tx.pettyCashTxn.create({
       data: { siteId: r.siteId, date: dateKeyToDate(istDateKey()), type: "TOPUP", amount: r.amount, description: `Top-up (${body.mode}${body.ref ? " " + body.ref : ""}): ${r.reason}`, requestId: r.id, enteredById: user.id },
+    });
+    // The cash is now in the requester's hands, so it lands on their ledger.
+    await post(tx, {
+      siteId: r.siteId,
+      holderId: r.requestedById,
+      kind: "ADVANCE",
+      magnitude: Number(r.amount),
+      sourceType: "petty_request",
+      sourceId: r.id,
+      memo: r.reason,
+      createdById: user.id,
     });
     await audit({ userId: user.id, siteId: r.siteId, action: "UPDATE", entity: "PettyCashRequest", entityId: r.id, oldValues: r, newValues: { status: "SENT", mode: body.mode }, ip }, tx);
   });
