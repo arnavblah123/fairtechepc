@@ -12,7 +12,7 @@ export const GET = withAuth("export.csv", async ({ user, req }) => {
       "Job No": j.jobNumber,
       Name: j.name,
       Client: j.clientName,
-      "Planned MT": Number(j.plannedTonnage),
+      "Planned MT": j.plannedTonnage ? Number(j.plannedTonnage) : "",
       "Planned start": formatDate(j.plannedStart),
       "Planned end": formatDate(j.plannedEnd),
       Status: j.voidedAt ? "VOID" : j.status,

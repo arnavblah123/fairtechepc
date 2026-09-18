@@ -19,10 +19,11 @@ export function AppShell({
     <div className="mx-auto flex min-h-dvh max-w-2xl flex-col">
       <header className="no-print sticky top-0 z-30 flex items-center justify-between gap-2 bg-brand px-4 py-2 text-white shadow">
         <div className="min-w-0">
-          {user.role === "SUPERADMIN" ? (
+          {/* One site for now: the switcher only appears once a second site exists. */}
+          {user.role === "SUPERADMIN" && sites.length > 1 ? (
             <SiteSwitcher current={site?.id ?? null} sites={sites} />
           ) : (
-            <div className="truncate font-bold">{site ? `${site.name} · ${site.city}` : "No site"}</div>
+            <div className="truncate font-bold">{site ? `${site.name} · ${site.city}` : "Fairtech"}</div>
           )}
           <div className="truncate text-xs opacity-80">
             {user.name} · {ROLE_LABELS[user.role].en}

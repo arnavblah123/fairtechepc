@@ -7,12 +7,13 @@ import { Bi } from "@/components/ui/Bi";
 import { Badge, Card } from "@/components/ui/Card";
 import { CameraInput } from "@/components/forms/CameraInput";
 import { PhotoLink } from "@/components/forms/PhotoLink";
+import { DeleteButton } from "@/components/forms/DeleteButton";
 import { formatDate } from "@/lib/format";
 
 type Dispatch = { id: string; item: string; unit: string; qty: number; date: string; photoUrl: string | null; received: { qty: number; by: string; short: boolean; remark: string | null } | null };
 
-export function DispatchBoard({ siteId, canDispatch, canReceive, items, dispatches }: {
-  siteId: string; canDispatch: boolean; canReceive: boolean;
+export function DispatchBoard({ siteId, canDispatch, canReceive, canDelete, items, dispatches }: {
+  siteId: string; canDispatch: boolean; canReceive: boolean; canDelete: boolean;
   items: { id: string; name: string; unit: string }[]; dispatches: Dispatch[];
 }) {
   const [showNew, setShowNew] = useState(false);
@@ -61,6 +62,11 @@ export function DispatchBoard({ siteId, canDispatch, canReceive, items, dispatch
               </div>
               <div className="text-xs text-slate-500">Sent {formatDate(d.date)} {d.received ? `· ack by ${d.received.by}` : ""} {d.received?.remark ? `· ${d.received.remark}` : ""}</div>
               <PhotoLink url={d.photoUrl} size="h-12 w-12" />
+              {canDelete && (
+                <div className="mt-1.5">
+                  <DeleteButton entity="ConsumableDispatch" id={d.id} what={`dispatch of ${d.item}`} />
+                </div>
+              )}
               {canReceive && !d.received && (
                 <div className="mt-2 flex items-end gap-2">
                   <Input label="Actual received qty" hi="कितना मिला" value={recv[d.id] ?? String(d.qty)} onChange={(e) => setRecv({ ...recv, [d.id]: e.target.value })} inputMode="decimal" />

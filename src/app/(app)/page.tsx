@@ -6,7 +6,7 @@ import { can } from "@/lib/permissions";
 import { Badge, Card, EmptyState, Stat } from "@/components/ui/Card";
 import { Bi } from "@/components/ui/Bi";
 import { LinkButton } from "@/components/ui/Button";
-import { formatDate, formatINR, formatNum, istDateKey, dateKeyToDate, titleCase } from "@/lib/format";
+import { formatDate, formatINR, formatNum, istDateKey, dateKeyToDate, dateToKey, titleCase } from "@/lib/format";
 import { siteDashboard } from "@/lib/dashboard";
 import { ProgressChart } from "@/components/dashboard/ProgressChart";
 import { ApprovalRow } from "@/components/dashboard/ApprovalRow";
@@ -15,7 +15,83 @@ import { PHOTO_SLOTS } from "@/lib/slots";
 export default async function HomePage() {
   const user = (await getSessionUser())!;
   if (user.role === "SUPERADMIN") return <AdminDashboard />;
+  if (user.role === "PURCHASE") return <PurchaseHome />;
   return <SiteHome />;
+}
+
+/* ------------------------------------------------------------------ */
+/* Purchase desk (Pune): what needs ordering, what is on the way       */
+/* ------------------------------------------------------------------ */
+async function PurchaseHome() {
+  const user = (await getSessionUser())!;
+  const site = await getCurrentSite(user);
+  if (!site) return <EmptyState en="No site set up yet." />;
+  const [toOrder, ordered, inTransit] = await Promise.all([
+    prisma.consumableRequest.findMany({
+      where: { siteId: site.id, status: "APPROVED", fulfilment: { not: "LOCAL_PURCHASE" }, voidedAt: null },
+      orderBy: { neededBy: "asc" },
+      include: { item: { select: { name: true, unit: true } } },
+    }),
+    prisma.consumableRequest.findMany({
+      where: { siteId: site.id, status: "ORDERED", voidedAt: null },
+      orderBy: { expectedDate: "asc" },
+      include: { item: { select: { name: true, unit: true } }, dispatches: { where: { voidedAt: null }, select: { receivedAt: true } } },
+    }),
+    prisma.consumableDispatch.count({ where: { siteId: site.id, receivedAt: null, voidedAt: null } }),
+  ]);
+  const today = istDateKey();
+  return (
+    <div className="space-y-4">
+      <div>
+        <h1 className="text-xl font-bold">Purchase desk · {formatDate(today)}</h1>
+        <p className="text-sm text-slate-500">{site.name}, {site.city}</p>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <Stat label="To order" hi="ऑर्डर करना है" value={toOrder.length} tone={toOrder.length ? "red" : "green"} />
+        <Stat label="In transit" hi="रास्ते में" value={inTransit} tone="blue" />
+      </div>
+      <Card title="Approved — waiting for your order" hi="ऑर्डर बाकी" action={<Link href="/consumables/requests" className="text-sm font-semibold text-brand">Open →</Link>}>
+        {toOrder.length === 0 ? (
+          <p className="text-sm text-green-700">Nothing pending 🎉</p>
+        ) : (
+          <ul className="divide-y text-sm">
+            {toOrder.map((r) => {
+              const late = dateToKey(r.neededBy) < today;
+              return (
+                <li key={r.id} className="flex items-center justify-between py-2">
+                  <span className="min-w-0 flex-1 truncate">{r.item.name} · {formatNum(r.qty)} {r.item.unit}</span>
+                  <span className={`shrink-0 text-xs ${late ? "font-bold text-red-600" : "text-slate-500"}`}>needed {formatDate(r.neededBy)}</span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </Card>
+      <Card title="Ordered" hi="ऑर्डर हो चुका">
+        {ordered.length === 0 ? (
+          <p className="text-sm text-slate-500">No open orders.</p>
+        ) : (
+          <ul className="divide-y text-sm">
+            {ordered.map((r) => (
+              <li key={r.id} className="py-2">
+                <div className="flex items-center justify-between">
+                  <span className="min-w-0 flex-1 truncate">{r.item.name} · {formatNum(r.qty)} {r.item.unit}</span>
+                  <Badge tone={r.dispatches.length ? "blue" : "amber"}>{r.dispatches.length ? "dispatched" : "to dispatch"}</Badge>
+                </div>
+                <div className="text-xs text-slate-500">
+                  {r.vendorName}{r.poNumber ? ` · PO ${r.poNumber}` : ""}{r.expectedDate ? ` · due ${formatDate(r.expectedDate)}` : ""}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+      <div className="grid grid-cols-2 gap-2">
+        <LinkButton href="/consumables/requests" variant="primary"><Bi en="Requests" hi="रिक्वेस्ट" /></LinkButton>
+        <LinkButton href="/consumables" variant="outline"><Bi en="Site stock" hi="स्टॉक" /></LinkButton>
+      </div>
+    </div>
+  );
 }
 
 /* ------------------------------------------------------------------ */
@@ -177,7 +253,9 @@ async function AdminDashboard() {
                 <Link href={`/jobs/${j.id}`} className="flex min-h-[48px] items-center justify-between py-2">
                   <div>
                     <div className="font-semibold">{j.jobNumber} · {j.name}</div>
-                    <div className="text-xs text-red-600">Bottleneck: {j.bottleneck} · {j.overrun} days over</div>
+                    <div className="text-xs text-red-600">
+                      {j.bottleneck ? `Bottleneck: ${j.bottleneck} · ${j.overrun} days over` : `Behind plan: ${j.percent}% done, should be ${j.shouldBe}%`}
+                    </div>
                   </div>
                   <span className="font-bold">{j.percent}%</span>
                 </Link>
@@ -245,8 +323,8 @@ async function AdminDashboard() {
       </div>
 
       {/* Cumulative progress */}
-      <Card title="Project progress: planned vs actual MT" hi="कुल प्रगति">
-        <ProgressChart totalPlannedMT={d.chart.totalPlannedMT} planStart={d.chart.planStart} planEnd={d.chart.planEnd} actualCum={d.chart.actualCum} today={d.today} />
+      <Card title="Job progress vs plan" hi="प्रगति बनाम योजना">
+        <ProgressChart jobs={d.jobProgress} />
       </Card>
 
       <div className="grid grid-cols-2 gap-2">

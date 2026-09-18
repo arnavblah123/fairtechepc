@@ -13,7 +13,7 @@ Open the app from the home-screen icon. Login once; it stays logged in.
 | **10–12** | **Photo 2**. Enter any **consumables issued** (electrodes, wheels, gas) against the job. <br>**फोटो 2**। जो **सामान निकला** (इलेक्ट्रोड, व्हील, गैस) वह काम के नाम पर भरें। | Photos · Consumables |
 | **12–2 PM** | **Photo 3**. Assign workers to stages and enter hours. <br>**फोटो 3**। मज़दूरों को स्टेज पर लगाएँ, घंटे भरें। | Photos · Jobs |
 | **2–4 PM** | **Photo 4**. Raise an **Issue** the moment work stops or material is short. <br>**फोटो 4**। काम रुके या सामान कम हो तो तुरंत **समस्या** दर्ज करें। | Photos · Issues |
-| **4–6 PM** | **Photo 5**. Enter **stage progress**: quantity done today and % complete. Enter out-time and OT. <br>**फोटो 5**। **स्टेज प्रगति** भरें: आज कितना हुआ, कितना % पूरा। आउट-टाइम और ओटी भरें। | Photos · Jobs · Attendance |
+| **4–6 PM** | **Photo 5**. Enter **stage progress**: only the quantity done today (the app works out the percentage). Tick "stage finished" when a stage is complete. Enter out-time and OT. <br>**फोटो 5**। **स्टेज प्रगति** भरें: सिर्फ़ आज कितना काम हुआ। स्टेज पूरी हो तो टिक करें। आउट-टाइम और ओटी भरें। | Photos · Jobs · Attendance |
 | **Before 8:00 PM** | Open **DPR**, check the auto-filled report, add a short remark, **Submit**. <br>**डीपीआर** खोलें, रिपोर्ट देखें, छोटी टिप्पणी लिखें, **सबमिट** करें। | DPR / डीपीआर |
 
 ## Rules / नियम
@@ -24,8 +24,8 @@ Open the app from the home-screen icon. Login once; it stays logged in.
    **डीपीआर रोज़ 8 बजे से पहले।** न भेजने पर एमडी की स्क्रीन पर लाल दिखता है।
 3. **Only today's and yesterday's entries are allowed** (yesterday until 10 AM). Older dates need the MD to unlock.
    **सिर्फ़ आज और कल की एंट्री** (कल की सुबह 10 बजे तक)। पुरानी तारीख के लिए एमडी से अनलॉक कराएँ।
-4. **Nothing can be bought without approval.** Raise a request in the app; buy only after it shows "Approved".
-   **बिना मंज़ूरी कुछ न खरीदें।** ऐप में रिक्वेस्ट डालें; "Approved" दिखने पर ही खरीदें।
+4. **Nothing can be bought without approval.** Raise a request in the app. Arnav approves, then purchase in Pune places the order. When the material arrives, **inward it** and enter the quantity actually received — if it is short, write what is missing.
+   **बिना मंज़ूरी कुछ न खरीदें।** ऐप में रिक्वेस्ट डालें। अरनव मंज़ूरी देंगे, पुणे से ऑर्डर होगा। माल आने पर **इनवर्ड करें** और जितना मिला वही मात्रा भरें; कम हो तो लिखें।
 5. **Every expense needs a bill photo.** No bill, no entry.
    **हर खर्च की बिल फोटो ज़रूरी।** बिना बिल एंट्री नहीं।
 6. **Machine breakdown:** raise a ticket the same day. When repaired, the person who checked it must sign off.

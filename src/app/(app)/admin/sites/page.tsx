@@ -13,9 +13,11 @@ export default async function SitesPage() {
   return (
     <div>
       <PageHeader title="Sites" hi="साइट" back="/more" />
-      <LinkButton href="/admin/sites/new" full size="lg" className="mb-4">
-        + <Bi en="Add site" hi="नई साइट" />
-      </LinkButton>
+      {sites.filter((s) => s.active).length === 0 && (
+        <LinkButton href="/admin/sites/new" full size="lg" className="mb-4">
+          + <Bi en="Add site" hi="नई साइट" />
+        </LinkButton>
+      )}
       <Card>
         <ul className="divide-y">
           {sites.map((s) => (

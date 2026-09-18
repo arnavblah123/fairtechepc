@@ -8,7 +8,7 @@ import { DispatchBoard } from "./DispatchBoard";
 import { dateToKey } from "@/lib/format";
 
 export default async function DispatchesPage() {
-  const user = await requirePage("dpr.view");
+  const user = await requirePage("consumable.view");
   const site = await getCurrentSite(user);
   if (!site) return <EmptyState en="No site selected." />;
   const [dispatches, items] = await Promise.all([
@@ -27,6 +27,7 @@ export default async function DispatchesPage() {
         siteId={site.id}
         canDispatch={can(user.role, "consumable.dispatch")}
         canReceive={can(user.role, "consumable.receive")}
+        canDelete={can(user.role, "record.delete")}
         items={items}
         dispatches={dispatches.map((d) => ({
           id: d.id,

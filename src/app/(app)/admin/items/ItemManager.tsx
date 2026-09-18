@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Input, Select, Toggle } from "@/components/ui/Field";
 import { Badge, Card } from "@/components/ui/Card";
 import { titleCase } from "@/lib/format";
+import { DeleteButton } from "@/components/forms/DeleteButton";
 
 type Item = { id?: string; name: string; category: ConsumableCategory; unit: string; reorderLevel: number; isWeldingConsumable: boolean; kgPerUnit: number | null; active: boolean };
 const CATEGORIES: ConsumableCategory[] = ["WELDING_ELECTRODE", "MIG_WIRE", "GAS", "GRINDING", "CUTTING", "HAND_TOOL", "PPE_SAFETY", "PAINT", "HARDWARE", "OTHER"];
@@ -57,6 +58,7 @@ export function ItemManager({ items }: { items: Item[] }) {
               <div className="flex items-center gap-2">
                 {i.isWeldingConsumable && <Badge tone="blue">norm</Badge>}
                 <button className="min-h-[40px] rounded-lg border-2 border-slate-300 px-3 font-semibold" onClick={() => setEditing(i)}>Edit</button>
+                {i.id && i.active && <DeleteButton entity="ConsumableItem" id={i.id} what={i.name} icon />}
               </div>
             </li>
           ))}

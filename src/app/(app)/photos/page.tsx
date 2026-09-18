@@ -28,6 +28,7 @@ export default async function PhotosPage({ searchParams }: { searchParams: Promi
       date={date}
       today={today}
       canUpload={can(user.role, "photo.upload")}
+      canDelete={can(user.role, "record.delete")}
       jobs={jobs.map((j) => ({ id: j.id, label: `${j.jobNumber} · ${j.name}`, stages: j.stages }))}
       photographers={photographers}
       filters={{ jobId: sp.jobId ?? "", by: sp.by ?? "" }}

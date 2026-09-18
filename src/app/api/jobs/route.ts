@@ -34,7 +34,7 @@ export const POST = withAuth("job.manage", async ({ user, req, ip }) => {
             clientName: body.clientName,
             description: body.description || null,
             drawingRef: body.drawingRef || null,
-            plannedTonnage: body.plannedTonnage,
+            plannedTonnage: body.plannedTonnage === "" || body.plannedTonnage == null ? null : body.plannedTonnage,
             plannedStart: dateKeyToDate(body.plannedStart),
             plannedEnd: dateKeyToDate(body.plannedEnd),
             weldingNormKgPerMT: body.weldingNormKgPerMT ?? null,

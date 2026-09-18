@@ -3,6 +3,7 @@ import { machineSchema } from "@/lib/validation";
 import { prisma } from "@/lib/prisma";
 import { audit } from "@/lib/audit";
 import { Prisma } from "@prisma/client";
+import { dateKeyToDate } from "@/lib/format";
 
 export const GET = withAuth("dpr.view", async ({ user, req }) => {
   const url = new URL(req.url);
@@ -20,7 +21,18 @@ export const POST = withAuth("machine.dispatch", async ({ user, req, ip }) => {
       const machine = await prisma.$transaction(async (tx) => {
         const count = await tx.machine.count();
         const created = await tx.machine.create({
-          data: { machineNumber: `M-${String(count + 1).padStart(3, "0")}`, type: body.type, make: body.make || null, model: body.model || null, serialNo: body.serialNo || null },
+          data: {
+            machineNumber: `M-${String(count + 1).padStart(3, "0")}`,
+            type: body.type,
+            make: body.make || null,
+            model: body.model || null,
+            serialNo: body.serialNo || null,
+            ownership: body.ownership,
+            rentVendor: body.ownership === "RENTED" ? body.rentVendor || null : null,
+            rentPerMonth: body.ownership === "RENTED" ? (body.rentPerMonth ?? null) : null,
+            rentFrom: body.ownership === "RENTED" && body.rentFrom ? dateKeyToDate(body.rentFrom) : null,
+            rentTo: body.ownership === "RENTED" && body.rentTo ? dateKeyToDate(body.rentTo) : null,
+          },
         });
         await audit({ userId: user.id, action: "CREATE", entity: "Machine", entityId: created.id, newValues: created, ip }, tx);
         return created;

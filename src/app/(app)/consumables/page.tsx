@@ -10,7 +10,7 @@ import { formatNum, titleCase } from "@/lib/format";
 import { ExportLink } from "@/components/forms/ExportLink";
 
 export default async function ConsumablesPage() {
-  const user = await requirePage("dpr.view");
+  const user = await requirePage("consumable.view");
   const site = await getCurrentSite(user);
   if (!site) return <EmptyState en="No site selected." />;
   const [stock, pendingReceipts, pendingRequests] = await Promise.all([
@@ -32,9 +32,9 @@ export default async function ConsumablesPage() {
             <Bi en="Requests" hi="रिक्वेस्ट" />
           </Link>
         )}
-        {can(user.role, "consumable.approve") && (
+        {(can(user.role, "consumable.approve") || can(user.role, "consumable.order")) && (
           <Link href="/consumables/requests" className="relative rounded-xl bg-slate-800 py-3 text-white">
-            <Bi en="Requests" hi="रिक्वेस्ट" />
+            <Bi en="Requests & orders" hi="रिक्वेस्ट" />
             {pendingRequests > 0 && <span className="absolute -right-1 -top-1 rounded-full bg-red-600 px-2 py-0.5 text-xs">{pendingRequests}</span>}
           </Link>
         )}
@@ -42,7 +42,7 @@ export default async function ConsumablesPage() {
           <Bi en="Dispatches" hi="भेजा गया माल" />
           {pendingReceipts > 0 && can(user.role, "consumable.receive") && <span className="absolute -right-1 -top-1 rounded-full bg-amber-500 px-2 py-0.5 text-xs text-white">{pendingReceipts}</span>}
         </Link>
-        {can(user.role, "consumable.approve") && (
+        {can(user.role, "item.manage") && (
           <Link href="/admin/items" className="rounded-xl border-2 border-slate-300 bg-white py-3 text-slate-700"><Bi en="Item master" hi="आइटम सूची" /></Link>
         )}
       </div>

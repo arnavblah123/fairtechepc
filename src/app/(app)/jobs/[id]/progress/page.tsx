@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { assertSiteAccess } from "@/lib/site";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ProgressEditor } from "./ProgressEditor";
-import { istDateKey, addDays, dateKeyToDate, dateToKey } from "@/lib/format";
+import { istDateKey, addDays, dateKeyToDate } from "@/lib/format";
 
 export default async function ProgressPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ date?: string }> }) {
   const user = await requirePage("stage.progress");
@@ -23,11 +23,17 @@ export default async function ProgressPage({ params, searchParams }: { params: P
     notFound();
   }
   const dateObj = dateKeyToDate(date);
-  const [progress, workers, todaysLogs] = await Promise.all([
+  const [todaysProgress, allProgress, workers, todaysLogs] = await Promise.all([
     prisma.stageProgress.findMany({ where: { jobId: job.id, date: dateObj, voidedAt: null }, include: { workLogs: true } }),
+    prisma.stageProgress.groupBy({ by: ["stageId"], where: { jobId: job.id, voidedAt: null }, _sum: { qtyDone: true } }),
     prisma.worker.findMany({ where: { siteId: job.siteId, active: true }, orderBy: { code: "asc" }, select: { id: true, code: true, name: true, trade: true } }),
-    prisma.stageWorkLog.findMany({ where: { date: dateObj, worker: { siteId: job.siteId } }, include: { stageProgress: { include: { stage: { select: { id: true, name: true } } } } } }),
+    prisma.stageWorkLog.findMany({
+      where: { date: dateObj, worker: { siteId: job.siteId } },
+      include: { stageProgress: { include: { stage: { select: { id: true, name: true } } } } },
+    }),
   ]);
+  const cumulative = new Map(allProgress.map((p) => [p.stageId, Number(p._sum.qtyDone ?? 0)]));
+
   return (
     <div>
       <PageHeader title={`${job.jobNumber} progress`} hi="स्टेज प्रगति" back={`/jobs/${job.id}`} />
@@ -37,14 +43,16 @@ export default async function ProgressPage({ params, searchParams }: { params: P
         yesterday={addDays(today, -1)}
         jobId={job.id}
         stages={job.stages.map((s) => {
-          const p = progress.find((x) => x.stageId === s.id);
+          const p = todaysProgress.find((x) => x.stageId === s.id);
           return {
             id: s.id,
             name: `${s.sequence}. ${s.name}`,
             unit: s.unit,
             plannedQty: Number(s.plannedQty),
+            doneSoFar: cumulative.get(s.id) ?? 0,
+            done: !!s.actualEnd,
             entry: p
-              ? { qtyDone: String(Number(p.qtyDone)), percentComplete: String(Number(p.percentComplete)), remark: p.remark ?? "", workers: p.workLogs.map((w) => ({ workerId: w.workerId, hours: Number(w.hours), shift: w.shift })) }
+              ? { qtyDone: String(Number(p.qtyDone)), remark: p.remark ?? "", workers: p.workLogs.map((w) => ({ workerId: w.workerId, hours: Number(w.hours), shift: w.shift })) }
               : null,
           };
         })}

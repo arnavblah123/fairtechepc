@@ -10,14 +10,15 @@ import { CameraInput } from "@/components/forms/CameraInput";
 import { Input, Select } from "@/components/ui/Field";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { PHOTO_SLOTS } from "@/lib/slots";
+import { DeleteButton } from "@/components/forms/DeleteButton";
 
 type Photo = { id: string; url: string; slot: number | null; kind: string; caption: string | null; lat: number; lng: number; time: string; by: string; job: string | null; stage: string | null };
 type Job = { id: string; label: string; stages: { id: string; name: string }[] };
 
 export function PhotoBoard({
-  siteId, date, today, canUpload, jobs, photographers, filters, photos,
+  siteId, date, today, canUpload, canDelete, jobs, photographers, filters, photos,
 }: {
-  siteId: string; date: string; today: string; canUpload: boolean;
+  siteId: string; date: string; today: string; canUpload: boolean; canDelete: boolean;
   jobs: Job[]; photographers: { id: string; name: string }[];
   filters: { jobId: string; by: string };
   photos: Photo[];
@@ -123,6 +124,11 @@ export function PhotoBoard({
                 {p.caption && <div className="truncate">{p.caption}</div>}
                 <div className="text-slate-500">{p.by} · {formatDateTime(p.time).slice(11)}</div>
                 <a className="font-semibold text-brand underline" target="_blank" rel="noreferrer" href={`https://www.openstreetmap.org/?mlat=${p.lat}&mlon=${p.lng}#map=17/${p.lat}/${p.lng}`}>📍 Map</a>
+                {canDelete && (
+                  <div className="mt-1">
+                    <DeleteButton entity="SitePhoto" id={p.id} what="this photo" icon />
+                  </div>
+                )}
               </div>
             </Card>
           ))}

@@ -9,6 +9,7 @@ const ITEMS: Item[] = [
   { href: "/", en: "Home", hi: "होम", icon: "⌂" },
   { href: "/jobs", en: "Jobs", hi: "काम", icon: "▦" },
   { href: "/attendance", en: "Attendance", hi: "हाज़िरी", icon: "☑", roles: ["SUPERADMIN", "SITE_INCHARGE", "SUPERVISOR"] },
+  { href: "/consumables/requests", en: "Orders", hi: "ऑर्डर", icon: "📦", roles: ["PURCHASE"] },
   { href: "/more", en: "More", hi: "और", icon: "≡" },
 ];
 

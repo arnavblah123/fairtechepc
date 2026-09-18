@@ -17,7 +17,7 @@ export default async function StagesPage({ params }: { params: Promise<{ id: str
       <PageHeader title={`${job.jobNumber} stages`} hi="स्टेज सेट करें" back={`/jobs/${job.id}`} />
       <StageManager
         jobId={job.id}
-        plannedTonnage={Number(job.plannedTonnage)}
+        canDelete
         stages={job.stages.map((s) => ({ id: s.id, sequence: s.sequence, name: s.name, unit: s.unit, plannedQty: Number(s.plannedQty), plannedDays: s.plannedDays, hasProgress: s._count.progress > 0 }))}
       />
     </div>

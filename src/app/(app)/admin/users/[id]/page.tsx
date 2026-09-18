@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { UserForm } from "../UserForm";
 import { ResetPasswordForm } from "../ResetPasswordForm";
+import { DeleteButton } from "@/components/forms/DeleteButton";
 
 export default async function EditUserPage({ params }: { params: Promise<{ id: string }> }) {
   const me = await requirePage("user.manage");
@@ -18,6 +19,7 @@ export default async function EditUserPage({ params }: { params: Promise<{ id: s
       <PageHeader title={u.name} hi={`@${u.username}`} back="/admin/users" />
       <UserForm sites={sites} user={u} isSelf={u.id === me.id} />
       <ResetPasswordForm userId={u.id} />
+      {u.id !== me.id && <DeleteButton entity="User" id={u.id} what={`user ${u.name}`} to="/admin/users" full size="md" label="Delete this user" />}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import "server-only";
 import { prisma } from "./prisma";
 import { istDateKey, istHour, addDays, dateKeyToDate, dateToKey } from "./format";
-import { jobStageSummary } from "./jobs";
+import { jobStageSummary, plannedPercentByDate } from "./jobs";
 import { weldingNormForJob } from "./consumables";
 import { pettyBalance, pettyBurnRate } from "./petty";
 
@@ -39,17 +39,29 @@ export async function siteDashboard(siteId: string) {
   const present = attendanceToday.filter((a) => a.status === "PRESENT").length + 0.5 * attendanceToday.filter((a) => a.status === "HALF_DAY").length;
   const planned = planToday?.items.reduce((a, i) => a + i.manpowerPlanned, 0) ?? null;
 
-  const jobsBehind: { id: string; jobNumber: string; name: string; bottleneck: string; overrun: number; percent: number }[] = [];
-  const progressSeries: { jobId: string; plannedMT: number; start: string; end: string; overallPercent: number }[] = [];
+  const jobsBehind: { id: string; jobNumber: string; name: string; bottleneck: string | null; overrun: number; percent: number; shouldBe: number }[] = [];
+  const jobProgress: { id: string; jobNumber: string; name: string; percent: number; shouldBe: number }[] = [];
   const normFlags: { jobNumber: string; actual: number; norm: number }[] = [];
   for (const j of activeJobs) {
     const s = await jobStageSummary(j.id);
-    progressSeries.push({ jobId: j.id, plannedMT: Number(j.plannedTonnage), start: dateToKey(j.plannedStart), end: dateToKey(j.plannedEnd), overallPercent: s.overallPercent });
-    if (s.bottleneck) jobsBehind.push({ id: j.id, jobNumber: j.jobNumber, name: j.name, bottleneck: s.bottleneck.name, overrun: s.bottleneck.daysOverrun, percent: s.overallPercent });
+    const shouldBe = plannedPercentByDate(j.plannedStart, j.plannedEnd, today);
+    jobProgress.push({ id: j.id, jobNumber: j.jobNumber, name: j.name, percent: s.overallPercent, shouldBe });
+    // Behind = measurably short of where the plan says it should be, or a stage running over its days.
+    if (s.overallPercent < shouldBe - 5 || s.bottleneck) {
+      jobsBehind.push({
+        id: j.id,
+        jobNumber: j.jobNumber,
+        name: j.name,
+        bottleneck: s.bottleneck?.name ?? null,
+        overrun: s.bottleneck?.daysOverrun ?? 0,
+        percent: s.overallPercent,
+        shouldBe,
+      });
+    }
     const n = await weldingNormForJob(j.id);
     if (n.over && n.actualKgPerMT !== null && n.normKgPerMT !== null) normFlags.push({ jobNumber: j.jobNumber, actual: Math.round(n.actualKgPerMT * 100) / 100, norm: n.normKgPerMT });
   }
-  jobsBehind.sort((a, b) => b.overrun - a.overrun);
+  jobsBehind.sort((a, b) => b.shouldBe - b.percent - (a.shouldBe - a.percent));
 
   const lowStock = await prisma.consumableStock.findMany({
     where: { siteId, item: { active: true } },
@@ -58,25 +70,6 @@ export async function siteDashboard(siteId: string) {
   const lowItems = lowStock.filter((s) => Number(s.qtyOnHand) <= Number(s.item.reorderLevel)).map((s) => ({ name: s.item.name, qty: Number(s.qtyOnHand), unit: s.item.unit }));
 
   const machineCounts = Object.fromEntries(machines.map((m) => [m.status, m._count]));
-
-  // Actual cumulative MT proxy: average daily MT progressed across each job's MT stages.
-  const mtProgress = await prisma.stageProgress.findMany({
-    where: { siteId, voidedAt: null, stage: { unit: "MT" }, job: { status: "ACTIVE", voidedAt: null } },
-    select: { date: true, qtyDone: true, jobId: true },
-  });
-  const mtStageCounts = await prisma.stage.groupBy({ by: ["jobId"], where: { siteId, voidedAt: null, unit: "MT" }, _count: true });
-  const stageCountMap = new Map(mtStageCounts.map((m) => [m.jobId, m._count]));
-  const daily = new Map<string, number>();
-  for (const p of mtProgress) {
-    const k = dateToKey(p.date);
-    daily.set(k, (daily.get(k) ?? 0) + Number(p.qtyDone) / Math.max(1, stageCountMap.get(p.jobId) ?? 1));
-  }
-  const actualSeries = [...daily.entries()].sort(([a], [b]) => (a < b ? -1 : 1));
-  let cum = 0;
-  const actualCum = actualSeries.map(([date, v]) => ({ date, mt: Math.round((cum += v) * 100) / 100 }));
-  const totalPlannedMT = activeJobs.reduce((a, j) => a + Number(j.plannedTonnage), 0);
-  const planStart = progressSeries.length ? progressSeries.map((p) => p.start).sort()[0] : today;
-  const planEnd = progressSeries.length ? progressSeries.map((p) => p.end).sort().at(-1)! : today;
 
   return {
     site: { id: site.id, name: site.name, code: site.code, city: site.city },
@@ -91,6 +84,7 @@ export async function siteDashboard(siteId: string) {
     planned,
     workersActive,
     jobsBehind,
+    jobProgress,
     normFlags,
     lowItems,
     pendingCons: pendingCons.map((r) => ({ id: r.id, label: `${r.item.name} × ${Number(r.qty)} ${r.item.unit}`, sub: `${r.reason} — ${r.requestedBy.name}` })),
@@ -101,6 +95,5 @@ export async function siteDashboard(siteId: string) {
     pettyBalance: balance,
     pettyThreshold: Number(site.pettyCashThreshold),
     burnRate: burn,
-    chart: { totalPlannedMT, planStart, planEnd, actualCum },
   };
 }

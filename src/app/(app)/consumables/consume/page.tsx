@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { EmptyState } from "@/components/ui/Card";
 import { ConsumeForm } from "./ConsumeForm";
 import { istDateKey, dateKeyToDate, formatNum } from "@/lib/format";
+import { can } from "@/lib/permissions";
 
 export default async function ConsumePage() {
   const user = await requirePage("consumable.consume");
@@ -23,7 +24,8 @@ export default async function ConsumePage() {
         date={today}
         items={stock.map((s) => ({ id: s.itemId, name: s.item.name, unit: s.item.unit, onHand: Number(s.qtyOnHand) }))}
         jobs={jobs.map((j) => ({ id: j.id, label: `${j.jobNumber} · ${j.name}`, stages: j.stages }))}
-        todays={todays.map((t) => `${t.item.name}: ${formatNum(t.qty)} ${t.item.unit} (${t.job.jobNumber})`)}
+        canDelete={can(user.role, "record.delete")}
+        todays={todays.map((t) => ({ id: t.id, label: `${t.item.name}: ${formatNum(t.qty)} ${t.item.unit} (${t.job.jobNumber})` }))}
       />
     </div>
   );

@@ -9,7 +9,7 @@ import { MACHINE_STATUS_TONE } from "@/lib/machine-labels";
 import { NewMachineButton } from "./NewMachineButton";
 
 export default async function MachinesPage() {
-  const user = await requirePage("dpr.view");
+  const user = await requirePage("machine.view");
   const site = await getCurrentSite(user);
   const isAdmin = user.role === "SUPERADMIN";
   const machines = await prisma.machine.findMany({
@@ -38,7 +38,7 @@ export default async function MachinesPage() {
   );
 }
 
-function MachineList({ machines, showSite }: { machines: { id: string; machineNumber: string; type: string; make: string | null; status: string; site: { code: string } | null; tickets: { id: string }[] }[]; showSite: boolean }) {
+function MachineList({ machines, showSite }: { machines: { id: string; machineNumber: string; type: string; make: string | null; status: string; ownership: string; rentVendor: string | null; site: { code: string } | null; tickets: { id: string }[] }[]; showSite: boolean }) {
   return (
     <ul className="divide-y">
       {machines.map((m) => (
@@ -46,9 +46,13 @@ function MachineList({ machines, showSite }: { machines: { id: string; machineNu
           <Link href={`/machines/${m.id}`} className="flex min-h-[56px] items-center justify-between gap-2 py-2">
             <div className="min-w-0">
               <div className="font-semibold">{m.machineNumber} · {titleCase(m.type)}</div>
-              <div className="text-xs text-slate-500">{m.make ?? ""}{showSite && m.site ? ` · ${m.site.code}` : ""}</div>
+              <div className="text-xs text-slate-500">
+                {m.make ?? ""}{showSite && m.site ? ` · ${m.site.code}` : ""}
+                {m.ownership === "RENTED" && m.rentVendor ? ` · rented from ${m.rentVendor}` : ""}
+              </div>
             </div>
             <div className="flex items-center gap-1.5">
+              {m.ownership === "RENTED" && <Badge tone="amber">Rented</Badge>}
               {m.tickets.length > 0 && <Badge tone="red">ticket</Badge>}
               <Badge tone={MACHINE_STATUS_TONE[m.status as keyof typeof MACHINE_STATUS_TONE]}>{titleCase(m.status)}</Badge>
             </div>

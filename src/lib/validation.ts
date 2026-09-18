@@ -23,7 +23,10 @@ export const loginSchema = z.object({
   password: z.string().min(1),
 });
 
-export const roleSchema = z.enum(["SUPERADMIN", "SITE_INCHARGE", "SUPERVISOR", "VIEWER"]);
+export const roleSchema = z.enum(["SUPERADMIN", "SITE_INCHARGE", "SUPERVISOR", "PURCHASE", "VIEWER"]);
+
+/** Head-office roles are not attached to a site. */
+const HEAD_OFFICE = ["SUPERADMIN", "PURCHASE"];
 
 export const createUserSchema = z
   .object({
@@ -34,7 +37,7 @@ export const createUserSchema = z
     role: roleSchema,
     siteId: z.string().optional().nullable(),
   })
-  .refine((v) => v.role === "SUPERADMIN" || !!v.siteId, {
+  .refine((v) => HEAD_OFFICE.includes(v.role) || !!v.siteId, {
     message: "Site is required for this role",
     path: ["siteId"],
   });
@@ -47,7 +50,7 @@ export const updateUserSchema = z
     siteId: z.string().optional().nullable(),
     active: z.boolean(),
   })
-  .refine((v) => v.role === "SUPERADMIN" || !!v.siteId, {
+  .refine((v) => HEAD_OFFICE.includes(v.role) || !!v.siteId, {
     message: "Site is required for this role",
     path: ["siteId"],
   });
@@ -86,7 +89,7 @@ export const jobSchema = z
     clientName: z.string().trim().min(2).max(120),
     description: z.string().trim().max(1000).optional().or(z.literal("")),
     drawingRef: z.string().trim().max(120).optional().or(z.literal("")),
-    plannedTonnage: z.coerce.number().positive("Must be more than 0").max(999999),
+    plannedTonnage: z.union([z.coerce.number().min(0).max(999999), z.literal("")]).optional().nullable(),
     plannedStart: dateKey,
     plannedEnd: dateKey,
     weldingNormKgPerMT: z.coerce.number().min(0).max(1000).optional().nullable(),
@@ -108,6 +111,19 @@ export const stageSchema = z.object({
 
 export const stageReorderSchema = z.object({
   order: z.array(z.string().min(1)).min(1),
+});
+
+/** Paste or type every stage at once. */
+export const stageBulkSchema = z.object({
+  stages: z.array(stageSchema).min(1, "Add at least one stage").max(40),
+});
+
+/** Consumables decided before the job starts. */
+export const jobMaterialSchema = z.object({
+  items: z
+    .array(z.object({ itemId: z.string().min(1), plannedQty: z.coerce.number().positive().max(9999999), note: z.string().trim().max(200).optional().or(z.literal("")) }))
+    .min(1)
+    .max(100),
 });
 
 export const voidSchema = z.object({ reason: z.string().trim().min(3, "Give a reason").max(300) });
@@ -187,7 +203,8 @@ export const progressSchema = z.object({
   stageId: z.string().min(1),
   date: dateKey,
   qtyDone: z.coerce.number().min(0).max(999999),
-  percentComplete: z.coerce.number().min(0).max(100),
+  /** Explicit "this stage is finished" tick — replaces self-reported percentages. */
+  stageComplete: z.boolean().default(false),
   remark: z.string().trim().max(300).optional().or(z.literal("")),
   workers: z
     .array(z.object({ workerId: z.string().min(1), hours: z.coerce.number().min(0.5).max(16), shift: z.enum(["DAY", "NIGHT"]).default("DAY") }))
@@ -265,11 +282,31 @@ export const consRequestSchema = z.object({
   neededBy: dateKey,
 });
 
-export const consDecideSchema = z.object({
-  decision: z.enum(["APPROVED", "REJECTED"]),
-  fulfilment: z.enum(["FROM_FACTORY", "LOCAL_PURCHASE"]).optional().nullable(),
-  note: z.string().trim().max(300).optional().or(z.literal("")),
-}).refine((v) => v.decision === "REJECTED" || !!v.fulfilment, { message: "Choose how it will be fulfilled", path: ["fulfilment"] });
+export const consDecideSchema = z
+  .object({
+    decision: z.enum(["APPROVED", "REJECTED"]),
+    fulfilment: z.enum(["FROM_FACTORY", "PURCHASE_ORDER", "LOCAL_PURCHASE"]).optional().nullable(),
+    note: z.string().trim().max(300).optional().or(z.literal("")),
+  })
+  .refine((v) => v.decision === "REJECTED" || !!v.fulfilment, { message: "Choose how it will be fulfilled", path: ["fulfilment"] });
+
+/** Purchase desk in Pune places the order with a vendor. */
+export const consOrderSchema = z.object({
+  vendorName: z.string().trim().min(2, "Vendor name is required").max(120),
+  poNumber: z.string().trim().max(60).optional().or(z.literal("")),
+  unitPrice: z.coerce.number().min(0).max(9999999).optional().nullable(),
+  expectedDate: dateKey,
+  orderNote: z.string().trim().max(300).optional().or(z.literal("")),
+  qty: z.coerce.number().positive().max(999999).optional().nullable(),
+});
+
+/** Purchase desk dispatches the ordered material towards the site. */
+export const consShipSchema = z.object({
+  qty: z.coerce.number().positive().max(999999),
+  dispatchDate: dateKey,
+  photoUrl: z.string().max(500).optional().or(z.literal("")),
+  vehicleRef: z.string().trim().max(80).optional().or(z.literal("")),
+});
 
 export const consCloseSchema = z.object({
   price: money,
@@ -280,12 +317,19 @@ export const consCloseSchema = z.object({
 export const machineTypeSchema = z.enum(["WELDING_MACHINE", "GRINDER", "GAS_CUTTING_SET", "DRILLING_MACHINE", "CHAIN_PULLEY_BLOCK", "DG_SET", "COMPRESSOR", "OTHER"]);
 export const conditionSchema = z.enum(["GOOD", "AVERAGE", "NEEDS_REPAIR"]);
 
-export const machineSchema = z.object({
-  type: machineTypeSchema,
-  make: z.string().trim().max(80).optional().or(z.literal("")),
-  model: z.string().trim().max(80).optional().or(z.literal("")),
-  serialNo: z.string().trim().max(80).optional().or(z.literal("")),
-});
+export const machineSchema = z
+  .object({
+    type: machineTypeSchema,
+    make: z.string().trim().max(80).optional().or(z.literal("")),
+    model: z.string().trim().max(80).optional().or(z.literal("")),
+    serialNo: z.string().trim().max(80).optional().or(z.literal("")),
+    ownership: z.enum(["OWNED", "RENTED"]).default("OWNED"),
+    rentVendor: z.string().trim().max(120).optional().or(z.literal("")),
+    rentPerMonth: z.coerce.number().min(0).max(9999999).optional().nullable(),
+    rentFrom: dateKey.optional().nullable().or(z.literal("")),
+    rentTo: dateKey.optional().nullable().or(z.literal("")),
+  })
+  .refine((v) => v.ownership === "OWNED" || !!v.rentVendor, { message: "Who is it rented from?", path: ["rentVendor"] });
 
 export const machineDispatchSchema = z.object({
   direction: z.enum(["TO_SITE", "TO_FACTORY"]),

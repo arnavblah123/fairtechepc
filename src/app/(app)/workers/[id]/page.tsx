@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/Card";
 import { WorkerForm } from "../WorkerForm";
 import { RateSection } from "./RateSection";
 import { dateToKey, formatDate, formatINR } from "@/lib/format";
+import { DeleteButton } from "@/components/forms/DeleteButton";
 
 export default async function WorkerDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requirePage("worker.view");
@@ -59,6 +60,7 @@ export default async function WorkerDetailPage({ params }: { params: Promise<{ i
           </dl>
         </Card>
       )}
+      {can(user.role, "record.delete") && <DeleteButton entity="Worker" id={worker.id} what={`worker ${worker.name}`} to="/workers" full size="md" label="Delete this worker" />}
       {canRate && worker.wageRates[0] && (
         <p className="text-xs text-slate-500">
           Current rate {formatINR(worker.wageRates[0].rate)} {worker.wageType === "PER_DAY" ? "per day" : "per hour"}. Rates are visible only to you.

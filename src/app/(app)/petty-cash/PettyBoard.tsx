@@ -10,6 +10,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { CameraInput } from "@/components/forms/CameraInput";
 import { PhotoLink } from "@/components/forms/PhotoLink";
 import { ExportLink } from "@/components/forms/ExportLink";
+import { DeleteButton } from "@/components/forms/DeleteButton";
 import { formatDate, formatINR, titleCase } from "@/lib/format";
 
 type Req = { id: string; amount: number; reason: string; urgency: Urgency; status: string; by: string; mode: string | null; note: string | null };
@@ -24,11 +25,11 @@ const CATEGORIES: [ExpenseCategory, string, string][] = [
 ];
 
 export function PettyBoard(props: {
-  siteId: string; today: string; full: boolean; canApprove: boolean; canExpense: boolean; canRequest: boolean;
+  siteId: string; today: string; full: boolean; canApprove: boolean; canExpense: boolean; canRequest: boolean; canDelete: boolean;
   balance: number; burnRate: number; threshold: number;
   requests: Req[]; txns: Txn[]; recons: { month: string; physical: number; app: number; note: string | null }[];
 }) {
-  const { siteId, full, canApprove, canExpense, canRequest } = props;
+  const { siteId, full, canApprove, canExpense, canRequest, canDelete } = props;
   const { busy, submit } = useSubmit();
   const [mode, setMode] = useState<"none" | "request" | "expense" | "reconcile">("none");
   const [amount, setAmount] = useState("");
@@ -129,6 +130,11 @@ export function PettyBoard(props: {
                   }}>✕ Reject</Button>
                 </div>
               )}
+              {canDelete && (
+                <div className="mt-2">
+                  <DeleteButton entity="PettyCashRequest" id={r.id} what="this cash request" />
+                </div>
+              )}
               {canApprove && r.status === "APPROVED" && (
                 <div className="mt-2 flex gap-2">
                   {(["UPI", "BANK", "CASH"] as const).map((m) => (
@@ -157,6 +163,7 @@ export function PettyBoard(props: {
                   <div className="flex items-center gap-2">
                     <PhotoLink url={t.bill} size="h-10 w-10" />
                     <b className={t.type === "EXPENSE" ? "text-red-600" : "text-green-700"}>{t.type === "EXPENSE" ? "−" : "+"}{formatINR(t.amount)}</b>
+                    {canDelete && <DeleteButton entity="PettyCashTxn" id={t.id} what="this cash entry" icon />}
                   </div>
                 </li>
               ))}

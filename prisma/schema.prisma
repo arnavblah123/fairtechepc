@@ -20,6 +20,7 @@ enum Role {
   SUPERADMIN
   SITE_INCHARGE
   SUPERVISOR
+  PURCHASE // head-office purchase desk (Pune): places orders, not attached to a site
   VIEWER
 }
 
@@ -59,6 +60,8 @@ model User {
   consDispatchesRecvd    ConsumableDispatch[]      @relation("ConsReceivedBy")
   consumptionsEntered    ConsumableConsumption[]
   consRequestsRaised     ConsumableRequest[]       @relation("ConsReqRequestedBy")
+  consRequestsOrdered    ConsumableRequest[]       @relation("ConsReqOrderedBy")
+  jobMaterialsAdded      JobMaterial[]
   consRequestsDecided    ConsumableRequest[]       @relation("ConsReqDecidedBy")
   issuesRaised           Issue[]                   @relation("IssueRaisedBy")
   issuesClosed           Issue[]                   @relation("IssueClosedBy")
@@ -100,6 +103,7 @@ model Site {
 
   users             User[]
   jobs              Job[]
+  jobMaterials      JobMaterial[]
   stages            Stage[]
   stageProgress     StageProgress[]
   workers           Worker[]
@@ -152,7 +156,7 @@ model Job {
   clientName         String
   description        String?
   drawingRef         String?
-  plannedTonnage     Decimal   @db.Decimal(12, 3)
+  plannedTonnage     Decimal?  @db.Decimal(12, 3) // reference only, not a progress metric
   plannedStart       DateTime  @db.Date
   plannedEnd         DateTime  @db.Date
   actualStart        DateTime? @db.Date
@@ -167,11 +171,34 @@ model Job {
   voidReason         String?
 
   stages        Stage[]
+  materials     JobMaterial[]
   stageProgress StageProgress[]
   consumptions  ConsumableConsumption[]
   issues        Issue[]
   planItems     DailyPlanItem[]
   photos        SitePhoto[]
+}
+
+/// Consumables planned for a job before work starts. Requests are drawn against this.
+model JobMaterial {
+  id         String         @id @default(cuid())
+  siteId     String
+  site       Site           @relation(fields: [siteId], references: [id])
+  jobId      String
+  job        Job            @relation(fields: [jobId], references: [id])
+  itemId     String
+  item       ConsumableItem @relation(fields: [itemId], references: [id])
+  plannedQty Decimal        @db.Decimal(12, 3)
+  note       String?
+  addedById  String
+  addedBy    User           @relation(fields: [addedById], references: [id])
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  voidedAt   DateTime?
+  voidReason String?
+
+  @@unique([jobId, itemId])
+  @@index([siteId])
 }
 
 model Stage {
@@ -203,23 +230,22 @@ model Stage {
 
 /// One row per stage per date. Workers and hours are in StageWorkLog.
 model StageProgress {
-  id              String    @id @default(cuid())
-  siteId          String
-  site            Site      @relation(fields: [siteId], references: [id])
-  jobId           String
-  job             Job       @relation(fields: [jobId], references: [id])
-  stageId         String
-  stage           Stage     @relation(fields: [stageId], references: [id])
-  date            DateTime  @db.Date
-  qtyDone         Decimal   @default(0) @db.Decimal(12, 3)
-  percentComplete Decimal   @default(0) @db.Decimal(5, 2) // cumulative % as reported that day
-  remark          String?
-  enteredById     String
-  enteredBy       User      @relation("StageProgressEnteredBy", fields: [enteredById], references: [id])
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  voidedAt        DateTime?
-  voidReason      String?
+  id          String    @id @default(cuid())
+  siteId      String
+  site        Site      @relation(fields: [siteId], references: [id])
+  jobId       String
+  job         Job       @relation(fields: [jobId], references: [id])
+  stageId     String
+  stage       Stage     @relation(fields: [stageId], references: [id])
+  date        DateTime  @db.Date
+  qtyDone     Decimal   @default(0) @db.Decimal(12, 3)
+  remark      String?
+  enteredById String
+  enteredBy   User      @relation("StageProgressEnteredBy", fields: [enteredById], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  voidedAt    DateTime?
+  voidReason  String?
 
   workLogs StageWorkLog[]
 
@@ -330,6 +356,8 @@ model Attendance {
   markedBy   User             @relation("AttendanceMarkedBy", fields: [markedById], references: [id])
   createdAt  DateTime         @default(now())
   updatedAt  DateTime         @updatedAt
+  voidedAt   DateTime?
+  voidReason String?
 
   @@unique([workerId, date])
   @@index([siteId, date])
@@ -550,6 +578,11 @@ enum Condition {
   NEEDS_REPAIR
 }
 
+enum Ownership {
+  OWNED
+  RENTED
+}
+
 model Machine {
   id            String        @id @default(cuid())
   machineNumber String        @unique // M-014
@@ -557,6 +590,11 @@ model Machine {
   make          String?
   model         String?
   serialNo      String?
+  ownership     Ownership     @default(OWNED)
+  rentVendor    String?
+  rentPerMonth  Decimal?      @db.Decimal(12, 2)
+  rentFrom      DateTime?     @db.Date
+  rentTo        DateTime?     @db.Date
   siteId        String? // current site, null while at factory
   site          Site?         @relation(fields: [siteId], references: [id])
   status        MachineStatus @default(AT_FACTORY)
@@ -679,30 +717,33 @@ model ConsumableItem {
   updatedAt           DateTime           @updatedAt
 
   dispatches   ConsumableDispatch[]
+  jobMaterials JobMaterial[]
   stock        ConsumableStock[]
   consumptions ConsumableConsumption[]
   requests     ConsumableRequest[]
 }
 
 model ConsumableDispatch {
-  id             String         @id @default(cuid())
+  id             String             @id @default(cuid())
   siteId         String
-  site           Site           @relation(fields: [siteId], references: [id])
+  site           Site               @relation(fields: [siteId], references: [id])
   itemId         String
-  item           ConsumableItem @relation(fields: [itemId], references: [id])
-  qty            Decimal        @db.Decimal(12, 3)
-  dispatchDate   DateTime       @db.Date
+  item           ConsumableItem     @relation(fields: [itemId], references: [id])
+  requestId      String?
+  request        ConsumableRequest? @relation(fields: [requestId], references: [id])
+  qty            Decimal            @db.Decimal(12, 3)
+  dispatchDate   DateTime           @db.Date
   photoUrl       String?
   vehicleRef     String?
   dispatchedById String
-  dispatchedBy   User           @relation("ConsDispatchedBy", fields: [dispatchedById], references: [id])
-  receivedQty    Decimal?       @db.Decimal(12, 3)
+  dispatchedBy   User               @relation("ConsDispatchedBy", fields: [dispatchedById], references: [id])
+  receivedQty    Decimal?           @db.Decimal(12, 3)
   receivedAt     DateTime?
   receivedById   String?
-  receivedBy     User?          @relation("ConsReceivedBy", fields: [receivedById], references: [id])
-  shortReceipt   Boolean        @default(false)
+  receivedBy     User?              @relation("ConsReceivedBy", fields: [receivedById], references: [id])
+  shortReceipt   Boolean            @default(false)
   receiptRemark  String?
-  createdAt      DateTime       @default(now())
+  createdAt      DateTime           @default(now())
   voidedAt       DateTime?
   voidReason     String?
 
@@ -745,15 +786,17 @@ model ConsumableConsumption {
 }
 
 enum ConsRequestStatus {
-  PENDING
-  APPROVED
+  PENDING // raised on site, waiting for Arnav
+  APPROVED // approved, waiting for the purchase desk to order
+  ORDERED // purchase desk has placed the order with a vendor
   REJECTED
-  FULFILLED
+  FULFILLED // material inwarded and accepted at site
 }
 
 enum Fulfilment {
-  FROM_FACTORY
-  LOCAL_PURCHASE
+  FROM_FACTORY // send from existing factory stock
+  PURCHASE_ORDER // purchase desk in Pune buys from a vendor
+  LOCAL_PURCHASE // site buys locally against petty cash
 }
 
 model ConsumableRequest {
@@ -777,10 +820,20 @@ model ConsumableRequest {
   purchaseBillUrl String?
   purchasePrice   Decimal?          @db.Decimal(12, 2)
   purchasedAt     DateTime?
+  // Purchase desk (Pune) order details
+  vendorName      String?
+  poNumber        String?
+  unitPrice       Decimal?          @db.Decimal(12, 2)
+  expectedDate    DateTime?         @db.Date
+  orderedAt       DateTime?
+  orderedById     String?
+  orderedBy       User?             @relation("ConsReqOrderedBy", fields: [orderedById], references: [id])
+  orderNote       String?
   voidedAt        DateTime?
   voidReason      String?
 
   pettyCashTxn PettyCashTxn?
+  dispatches   ConsumableDispatch[]
 
   @@index([siteId, status])
 }
@@ -848,15 +901,17 @@ model Issue {
 // ---------------------------------------------------------------------------
 
 model DailyPlan {
-  id            String   @id @default(cuid())
+  id            String    @id @default(cuid())
   siteId        String
-  site          Site     @relation(fields: [siteId], references: [id])
-  date          DateTime @db.Date
+  site          Site      @relation(fields: [siteId], references: [id])
+  date          DateTime  @db.Date
   remark        String?
   submittedById String
-  submittedBy   User     @relation(fields: [submittedById], references: [id])
-  submittedAt   DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  submittedBy   User      @relation(fields: [submittedById], references: [id])
+  submittedAt   DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  voidedAt      DateTime?
+  voidReason    String?
 
   items DailyPlanItem[]
 
@@ -895,6 +950,8 @@ model DPR {
   submittedAt   DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+  voidedAt      DateTime?
+  voidReason    String?
 
   @@unique([siteId, date])
 }

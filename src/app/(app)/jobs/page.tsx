@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Badge, Card, EmptyState } from "@/components/ui/Card";
 import { LinkButton } from "@/components/ui/Button";
 import { Bi } from "@/components/ui/Bi";
-import { formatDate, formatNum } from "@/lib/format";
+import { formatDate } from "@/lib/format";
 import { ExportLink } from "@/components/forms/ExportLink";
 
 const STATUS_TONE = { ACTIVE: "green", ON_HOLD: "amber", COMPLETED: "blue", CLOSED: "slate" } as const;
@@ -44,7 +44,7 @@ export default async function JobsPage() {
                     </div>
                     <div className="truncate font-semibold">{j.name}</div>
                     <div className="text-xs text-slate-500">
-                      {j.clientName} · {formatNum(j.plannedTonnage)} MT · {formatDate(j.plannedStart)} → {formatDate(j.plannedEnd)} · {j._count.stages} stages
+                      {j.clientName} · {formatDate(j.plannedStart)} → {formatDate(j.plannedEnd)} · {j._count.stages} stages
                     </div>
                   </div>
                   <span className="text-slate-400">›</span>

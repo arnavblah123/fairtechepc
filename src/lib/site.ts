@@ -2,6 +2,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import { prisma } from "./prisma";
 import type { SessionUser } from "./auth";
+import { isHeadOffice } from "./permissions";
 import { AuthError } from "./auth";
 
 export const SITE_COOKIE = "ft_site";
@@ -14,7 +15,7 @@ export type SiteRef = { id: string; name: string; code: string; city: string };
  * falls back to the first active site.
  */
 export async function getCurrentSite(user: SessionUser): Promise<SiteRef | null> {
-  if (user.role !== "SUPERADMIN") return user.site;
+  if (!isHeadOffice(user.role)) return user.site;
   const jar = await cookies();
   const wanted = jar.get(SITE_COOKIE)?.value;
   const select = { id: true, name: true, code: true, city: true };
@@ -30,7 +31,7 @@ export async function getCurrentSite(user: SessionUser): Promise<SiteRef | null>
  * everyone else is forced to their own site regardless of what they send.
  */
 export async function resolveSiteId(user: SessionUser, requested?: string | null): Promise<string> {
-  if (user.role === "SUPERADMIN") {
+  if (isHeadOffice(user.role)) {
     if (requested) return requested;
     const s = await getCurrentSite(user);
     if (!s) throw new AuthError(403, "No site selected");
@@ -43,6 +44,6 @@ export async function resolveSiteId(user: SessionUser, requested?: string | null
 
 /** Throws unless the user may see records of this site. */
 export function assertSiteAccess(user: SessionUser, siteId: string) {
-  if (user.role === "SUPERADMIN") return;
+  if (isHeadOffice(user.role)) return;
   if (user.siteId !== siteId) throw new AuthError(403, "You cannot access another site");
 }

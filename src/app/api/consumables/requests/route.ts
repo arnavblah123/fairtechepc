@@ -5,13 +5,13 @@ import { audit } from "@/lib/audit";
 import { resolveSiteId } from "@/lib/site";
 import { dateKeyToDate } from "@/lib/format";
 
-export const GET = withAuth("dpr.view", async ({ user, req }) => {
+export const GET = withAuth("consumable.view", async ({ user, req }) => {
   const siteId = await resolveSiteId(user, new URL(req.url).searchParams.get("siteId"));
   const requests = await prisma.consumableRequest.findMany({
     where: { siteId, voidedAt: null },
     orderBy: { requestedAt: "desc" },
     take: 100,
-    include: { item: { select: { name: true, unit: true } }, requestedBy: { select: { name: true } }, decidedBy: { select: { name: true } } },
+    include: { item: { select: { name: true, unit: true } }, requestedBy: { select: { name: true } }, decidedBy: { select: { name: true } }, orderedBy: { select: { name: true } } },
   });
   return ok({ requests });
 });

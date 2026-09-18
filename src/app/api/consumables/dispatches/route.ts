@@ -5,7 +5,7 @@ import { audit } from "@/lib/audit";
 import { resolveSiteId } from "@/lib/site";
 import { dateKeyToDate } from "@/lib/format";
 
-export const GET = withAuth("dpr.view", async ({ user, req }) => {
+export const GET = withAuth("consumable.view", async ({ user, req }) => {
   const siteId = await resolveSiteId(user, new URL(req.url).searchParams.get("siteId"));
   const dispatches = await prisma.consumableDispatch.findMany({
     where: { siteId, voidedAt: null },

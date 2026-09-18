@@ -8,7 +8,7 @@ import { RequestsBoard } from "./RequestsBoard";
 import { dateToKey } from "@/lib/format";
 
 export default async function ConsRequestsPage() {
-  const user = await requirePage("dpr.view");
+  const user = await requirePage("consumable.view");
   const site = await getCurrentSite(user);
   if (!site) return <EmptyState en="No site selected." />;
   const [requests, items] = await Promise.all([
@@ -16,18 +16,27 @@ export default async function ConsRequestsPage() {
       where: { siteId: site.id, voidedAt: null },
       orderBy: [{ status: "asc" }, { requestedAt: "desc" }],
       take: 100,
-      include: { item: { select: { name: true, unit: true } }, requestedBy: { select: { name: true } }, decidedBy: { select: { name: true } } },
+      include: {
+        item: { select: { name: true, unit: true } },
+        requestedBy: { select: { name: true } },
+        decidedBy: { select: { name: true } },
+        orderedBy: { select: { name: true } },
+        dispatches: { where: { voidedAt: null }, select: { id: true, qty: true, receivedAt: true } },
+      },
     }),
     prisma.consumableItem.findMany({ where: { active: true }, orderBy: { name: "asc" }, select: { id: true, name: true, unit: true } }),
   ]);
   return (
     <div>
-      <PageHeader title="Consumable requests" hi="सामान रिक्वेस्ट" back="/consumables" />
+      <PageHeader title="Material requests" hi="सामान रिक्वेस्ट" back="/consumables" />
       <RequestsBoard
         siteId={site.id}
         canRequest={can(user.role, "consumable.request")}
         canApprove={can(user.role, "consumable.approve")}
+        canOrder={can(user.role, "consumable.order")}
+        canShip={can(user.role, "consumable.dispatch")}
         canClose={can(user.role, "consumable.receive")}
+        canDelete={can(user.role, "record.delete")}
         items={items}
         requests={requests.map((r) => ({
           id: r.id,
@@ -42,6 +51,13 @@ export default async function ConsRequestsPage() {
           decidedBy: r.decidedBy?.name ?? null,
           note: r.decisionNote,
           price: r.purchasePrice ? Number(r.purchasePrice) : null,
+          vendor: r.vendorName,
+          poNumber: r.poNumber,
+          unitPrice: r.unitPrice ? Number(r.unitPrice) : null,
+          expectedDate: r.expectedDate ? dateToKey(r.expectedDate) : null,
+          orderedBy: r.orderedBy?.name ?? null,
+          shipped: r.dispatches.length > 0,
+          awaitingInward: r.dispatches.some((d) => !d.receivedAt),
         }))}
       />
     </div>

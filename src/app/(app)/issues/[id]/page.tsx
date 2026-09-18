@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Badge, Card } from "@/components/ui/Card";
 import { PhotoLink } from "@/components/forms/PhotoLink";
 import { IssueActions } from "./IssueActions";
+import { DeleteButton } from "@/components/forms/DeleteButton";
 import { formatDateTime, titleCase } from "@/lib/format";
 
 const SEV_TONE = { LOW: "slate", MEDIUM: "blue", HIGH: "amber", WORK_STOPPED: "red" } as const;
@@ -49,6 +50,7 @@ export default async function IssueDetailPage({ params }: { params: Promise<{ id
           </div>
         )}
       </Card>
+      {can(user.role, "record.delete") && <DeleteButton entity="Issue" id={issue.id} what="this issue" to="/issues" full size="md" label="Delete this issue" />}
       {issue.status !== "RESOLVED" && (
         <IssueActions issueId={issue.id} status={issue.status} canAck={user.role === "SUPERADMIN"} canResolve={can(user.role, "issue.resolve")} />
       )}

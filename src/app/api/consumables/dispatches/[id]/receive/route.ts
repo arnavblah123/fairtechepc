@@ -20,6 +20,8 @@ export const POST = withAuth<{ id: string }>("consumable.receive", async ({ user
       data: { receivedQty: body.receivedQty, receivedAt: new Date(), receivedById: user.id, shortReceipt: short, receiptRemark: body.remark || null },
     });
     await adjustStock(tx, d.siteId, d.itemId, body.receivedQty);
+    // Material has landed and been accepted: the request it came from is closed.
+    if (d.requestId) await tx.consumableRequest.updateMany({ where: { id: d.requestId, status: { in: ["APPROVED", "ORDERED"] } }, data: { status: "FULFILLED" } });
     await audit({ userId: user.id, siteId: d.siteId, action: "UPDATE", entity: "ConsumableDispatch", entityId: d.id, oldValues: d, newValues: { receivedQty: body.receivedQty, short }, ip }, tx);
   });
   return ok({ ok: true, short });

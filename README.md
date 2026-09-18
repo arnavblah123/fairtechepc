@@ -8,17 +8,46 @@ Mobile-first web app for supervising a remote fabrication site. Supervisors upda
 
 | Module | Status |
 | --- | --- |
-| Login, roles, user management, sites, jobs, stages | ✅ |
+| Login, roles (incl. purchase desk), user management, jobs, stages | ✅ |
 | Labour master, attendance (muster photo), holidays, daily plan | ✅ |
-| Stage progress, DPR (compile, submit, print) | ✅ |
+| Stage progress (quantity-based), DPR (compile, submit, print) | ✅ |
 | Geotagged 5-slot daily photos, gallery | ✅ |
 | Issues with escalation | ✅ |
-| Consumables: dispatch/receive, consumption, request→approval→purchase, item master, norm check | ✅ |
-| Machines: register, dispatch/return, status, breakdown tickets with sign-off | ✅ |
-| Petty cash wallet, expenses with bill photos, reconciliation; advances; wage sheets | ✅ |
-| Superadmin exception dashboard with one-tap approvals and progress chart | ✅ |
+| Material plan per job, request → approval → purchase order → dispatch → inward & acceptance | ✅ |
+| Machines: owned or rented, dispatch/return, status, breakdown tickets with sign-off | ✅ |
+| Petty cash, advances, wage sheets | ✅ |
+| Superadmin exception dashboard with one-tap approvals | ✅ |
+| Delete (with reason + audit trail) on every record type | ✅ |
 
-The database schema for **all** phases is already in `prisma/schema.prisma`, so later phases add screens, not migrations.
+### How progress is measured
+
+Tonnage is **not** the yardstick and nobody types a percentage. Supervisors enter
+only the **quantity done today** against a stage, plus a tick when a stage is
+finished. The app derives each stage's percentage from quantity against the
+planned quantity, and the job's overall figure by weighting stages by their
+**planned days** — so a 25-day welding stage counts for more than a 6-day
+inspection. The dashboard compares that against where the plan says the job
+should be today.
+
+### Who does what in purchasing
+
+1. **Site supervisor** raises a material request (item, quantity, reason, needed-by).
+2. **Arnav** approves or rejects, and chooses: purchase desk buys, send from factory, or site buys locally.
+3. **Purchase (Pune)** places the order with a vendor (vendor, PO number, rate, expected date) and dispatches it.
+4. **Site** inwards the consignment, enters the quantity actually received, and a short receipt is flagged with a reason. Stock goes up only on acceptance.
+
+Every job also carries a **material plan**: all consumables it will need, entered
+before work starts, so requests can be read against the plan.
+
+### Deleting things
+
+Superadmin can delete any record — jobs, stages, workers, attendance, photos,
+issues, requests, dispatches, consumption, cash entries, machines, tickets,
+users, items. Deletion always asks for a reason, keeps the row in the database
+marked void, and writes to the audit log. Numbers stay correct: deleting a
+consumption entry puts the stock back, deleting a wage sheet releases its
+advances, deleting a job takes its stages with it. A stage that already has
+progress cannot be deleted on its own, and the last superadmin cannot be removed.
 
 ## Logins
 
@@ -28,6 +57,7 @@ On a fresh deployment the app shows a one-time **Setup** page where you create y
 | --- | --- | --- |
 | `incharge` | `site123` | Site In-charge (sample) |
 | `supervisor` | `site123` | Supervisor (sample) |
+| `purchase` | `site123` | Purchase desk, Pune (sample) |
 
 Superadmin can reset anyone's password from **More → Users**. Everyone can change their own from **More → Change password**.
 
@@ -112,6 +142,10 @@ Set `SEED_SAMPLE_DATA=false` to seed only the superadmin and item master.
 ---
 
 ## Free-tier limits to be aware of
+
+The app runs **one site** for now. The database is still multi-site, so a second
+site can be added later without a rewrite; the site switcher only appears once a
+second site exists.
 
 * **Neon free:** 0.5 GB storage, database sleeps after 5 minutes idle and wakes in about 1 second on first request. Plenty for years of text records.
 * **Vercel free (Hobby):** 100 GB bandwidth/month, non-commercial use policy. Photos are compressed to ~200 KB so 5 photos/day is ~30 MB/month.

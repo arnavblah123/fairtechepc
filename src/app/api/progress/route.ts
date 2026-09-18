@@ -39,7 +39,7 @@ export const POST = withAuth("stage.progress", async ({ user, req, ip }) => {
 
   const result = await prisma.$transaction(async (tx) => {
     const before = await tx.stageProgress.findUnique({ where: { stageId_date: { stageId: stage.id, date } }, include: { workLogs: true } });
-    const data = { qtyDone: body.qtyDone, percentComplete: body.percentComplete, remark: body.remark || null, enteredById: user.id };
+    const data = { qtyDone: body.qtyDone, remark: body.remark || null, enteredById: user.id };
     const row = before
       ? await tx.stageProgress.update({ where: { id: before.id }, data })
       : await tx.stageProgress.create({ data: { ...data, siteId, jobId: stage.job.id, stageId: stage.id, date } });
@@ -50,8 +50,8 @@ export const POST = withAuth("stage.progress", async ({ user, req, ip }) => {
     // Maintain the stage's actual start / end dates.
     const patch: { actualStart?: Date; actualEnd?: Date | null } = {};
     if (!stage.actualStart || date < stage.actualStart) patch.actualStart = date;
-    if (body.percentComplete >= 100) patch.actualEnd = stage.actualEnd ?? date;
-    else if (stage.actualEnd) patch.actualEnd = null;
+    if (body.stageComplete) patch.actualEnd = stage.actualEnd ?? date;
+    else if (stage.actualEnd) patch.actualEnd = null; // un-ticking reopens the stage
     if (Object.keys(patch).length) await tx.stage.update({ where: { id: stage.id }, data: patch });
     await audit({ userId: user.id, siteId, action: before ? "UPDATE" : "CREATE", entity: "StageProgress", entityId: row.id, oldValues: before ?? undefined, newValues: body, ip }, tx);
     return row;

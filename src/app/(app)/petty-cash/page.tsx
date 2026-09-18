@@ -42,6 +42,7 @@ export default async function PettyCashPage() {
       canApprove={can(user.role, "petty.approve")}
       canExpense={can(user.role, "petty.expense")}
       canRequest={can(user.role, "petty.request")}
+      canDelete={can(user.role, "record.delete")}
       balance={balance}
       burnRate={burn}
       threshold={full ? Number((await prisma.site.findUniqueOrThrow({ where: { id: site.id }, select: { pettyCashThreshold: true } })).pettyCashThreshold) : 0}

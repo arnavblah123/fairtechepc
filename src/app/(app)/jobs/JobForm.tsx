@@ -24,7 +24,6 @@ export function JobForm({ siteId, job, withPreset }: { siteId: string; job?: Job
   const [f, setF] = useState<JobFormData>(
     job ?? { name: "", clientName: "", description: "", drawingRef: "", plannedTonnage: "", plannedStart: "", plannedEnd: "", weldingNormKgPerMT: "", status: "ACTIVE" },
   );
-  const [preset, setPreset] = useState(true);
   const { busy, submit } = useSubmit();
   const set = (k: keyof JobFormData) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setF({ ...f, [k]: e.target.value });
 
@@ -36,20 +35,13 @@ export function JobForm({ siteId, job, withPreset }: { siteId: string; job?: Job
           e.preventDefault();
           const body = {
             ...f,
-            plannedTonnage: Number(f.plannedTonnage),
+            plannedTonnage: f.plannedTonnage === "" ? null : Number(f.plannedTonnage),
             weldingNormKgPerMT: f.weldingNormKgPerMT === "" ? null : Number(f.weldingNormKgPerMT),
           };
           if (job?.id) {
             submit(() => api(`/api/jobs/${job.id}`, { method: "PATCH", body }), { to: `/jobs/${job.id}` });
           } else {
-            const r = await submit(
-              async () => {
-                const created = await api<{ id: string }>("/api/jobs", { body: { ...body, siteId } });
-                if (withPreset && preset) await api(`/api/jobs/${created.id}/stages`, { body: { stages: PRESET_STAGES(Number(f.plannedTonnage)) } });
-                return created;
-              },
-              { refresh: false },
-            );
+            const r = await submit(async () => api<{ id: string }>("/api/jobs", { body: { ...body, siteId } }), { refresh: false });
             if (r) window.location.href = `/jobs/${r.id}/stages`;
           }
         }}
@@ -58,7 +50,7 @@ export function JobForm({ siteId, job, withPreset }: { siteId: string; job?: Job
         <Input label="Client name" hi="क्लाइंट" value={f.clientName} onChange={set("clientName")} required />
         <Input label="Drawing reference" hi="ड्रॉइंग नंबर" value={f.drawingRef} onChange={set("drawingRef")} />
         <Textarea label="Description" hi="विवरण" value={f.description} onChange={set("description")} />
-        <Input label="Planned tonnage (MT)" hi="योजना टन" value={f.plannedTonnage} onChange={set("plannedTonnage")} inputMode="decimal" required />
+        <Input label="Planned tonnage (MT) — optional" hi="टन (वैकल्पिक)" value={f.plannedTonnage} onChange={set("plannedTonnage")} inputMode="decimal" hint="For reference only. Progress is tracked stage by stage, not by tonnage." />
         <div className="grid grid-cols-2 gap-3">
           <Input label="Planned start" hi="शुरू" type="date" value={f.plannedStart} onChange={set("plannedStart")} required />
           <Input label="Planned end" hi="खत्म" type="date" value={f.plannedEnd} onChange={set("plannedEnd")} required />
@@ -73,12 +65,9 @@ export function JobForm({ siteId, job, withPreset }: { siteId: string; job?: Job
           </Select>
         )}
         {withPreset && (
-          <label className="flex min-h-[48px] items-center gap-3 rounded-xl bg-blue-50 px-3 py-2 text-sm">
-            <input type="checkbox" className="h-5 w-5" checked={preset} onChange={(e) => setPreset(e.target.checked)} />
-            <span>
-              Add the standard 8 stages (Marking → Dispatch/Erection) now. You can edit quantities and days on the next screen.
-            </span>
-          </label>
+          <p className="rounded-xl bg-blue-50 p-3 text-sm text-blue-900">
+            Next screen: write all the stages for this job in one go, with planned quantity and days for each.
+          </p>
         )}
         <Button type="submit" size="lg" full loading={busy}>
           <Bi en={job ? "Save changes" : "Create job"} hi={job ? "बदलाव सेव करें" : "काम बनाएँ"} />
@@ -86,18 +75,4 @@ export function JobForm({ siteId, job, withPreset }: { siteId: string; job?: Job
       </form>
     </Card>
   );
-}
-
-function PRESET_STAGES(tonnage: number) {
-  const mt = tonnage > 0 ? tonnage : 1;
-  return [
-    { name: "Marking", unit: "MT", plannedQty: mt, plannedDays: 10 },
-    { name: "Cutting", unit: "MT", plannedQty: mt, plannedDays: 12 },
-    { name: "Fit-up", unit: "MT", plannedQty: mt, plannedDays: 20 },
-    { name: "Welding", unit: "MT", plannedQty: mt, plannedDays: 25 },
-    { name: "Grinding", unit: "MT", plannedQty: mt, plannedDays: 10 },
-    { name: "Inspection", unit: "MT", plannedQty: mt, plannedDays: 6 },
-    { name: "Blasting/Painting", unit: "SQM", plannedQty: Math.round(mt * 20), plannedDays: 12 },
-    { name: "Dispatch/Erection", unit: "MT", plannedQty: mt, plannedDays: 15 },
-  ];
 }

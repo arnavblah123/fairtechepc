@@ -8,7 +8,7 @@ export type DprData = {
   manpower: { trade: string; present: number; halfDay: number; absent: number; otHours: number }[];
   totalPresent: number;
   plan: { job: string; stage: string; unit: string; targetQty: number; doneQty: number; manpowerPlanned: number }[];
-  extraProgress: { job: string; stage: string; unit: string; doneQty: number; percent: number }[];
+  extraProgress: { job: string; stage: string; unit: string; doneQty: number }[];
   consumables: { item: string; unit: string; qty: number; job: string }[];
   machines: { status: string; count: number }[];
   openIssues: { severity: string; category: string; description: string; ageHours: number }[];
@@ -53,7 +53,7 @@ export async function compileDpr(siteId: string, dateKeyStr: string): Promise<Dp
   const plannedStageIds = new Set((plan?.items ?? []).map((i) => i.stageId));
   const extraProgress = progress
     .filter((p) => !plannedStageIds.has(p.stageId))
-    .map((p) => ({ job: p.job.jobNumber, stage: p.stage.name, unit: p.stage.unit, doneQty: Number(p.qtyDone), percent: Number(p.percentComplete) }));
+    .map((p) => ({ job: p.job.jobNumber, stage: p.stage.name, unit: p.stage.unit, doneQty: Number(p.qtyDone) }));
 
   return {
     date: dateKeyStr,

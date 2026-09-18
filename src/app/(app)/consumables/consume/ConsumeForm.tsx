@@ -5,11 +5,12 @@ import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Field";
 import { Bi } from "@/components/ui/Bi";
 import { Card } from "@/components/ui/Card";
+import { DeleteButton } from "@/components/forms/DeleteButton";
 
 type Item = { id: string; name: string; unit: string; onHand: number };
 type Job = { id: string; label: string; stages: { id: string; name: string }[] };
 
-export function ConsumeForm({ date, items, jobs, todays }: { date: string; items: Item[]; jobs: Job[]; todays: string[] }) {
+export function ConsumeForm({ date, items, jobs, todays, canDelete }: { date: string; items: Item[]; jobs: Job[]; todays: { id: string; label: string }[]; canDelete: boolean }) {
   const [itemId, setItemId] = useState(items[0]?.id ?? "");
   const [jobId, setJobId] = useState(jobs[0]?.id ?? "");
   const [stageId, setStageId] = useState("");
@@ -49,7 +50,14 @@ export function ConsumeForm({ date, items, jobs, todays }: { date: string; items
       </Card>
       <Card title="Entered today" hi="आज की एंट्री">
         {todays.length === 0 ? <p className="text-sm text-slate-500">Nothing yet.</p> : (
-          <ul className="list-disc pl-5 text-sm">{todays.map((t, i) => (<li key={i}>{t}</li>))}</ul>
+          <ul className="divide-y text-sm">
+            {todays.map((t) => (
+              <li key={t.id} className="flex items-center justify-between gap-2 py-2">
+                <span className="min-w-0 flex-1">{t.label}</span>
+                {canDelete && <DeleteButton entity="ConsumableConsumption" id={t.id} what="this consumption entry" />}
+              </li>
+            ))}
+          </ul>
         )}
       </Card>
     </div>

@@ -6,11 +6,12 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Badge, Card } from "@/components/ui/Card";
 import { PhotoLink } from "@/components/forms/PhotoLink";
 import { MachinePanel } from "./MachinePanel";
+import { DeleteButton } from "@/components/forms/DeleteButton";
 import { dateToKey, formatDate, formatDateTime, formatINR, titleCase } from "@/lib/format";
 import { MACHINE_STATUS_TONE } from "@/lib/machine-labels";
 
 export default async function MachineDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const user = await requirePage("dpr.view");
+  const user = await requirePage("machine.view");
   const { id } = await params;
   const m = await prisma.machine.findFirst({
     where: { id, active: true },
@@ -34,7 +35,24 @@ export default async function MachineDetailPage({ params }: { params: Promise<{ 
         <Badge tone={MACHINE_STATUS_TONE[m.status]}>{titleCase(m.status)}</Badge>
         {m.site && <Badge tone="blue">{m.site.name}</Badge>}
         {!m.siteId && <Badge tone="slate">At factory</Badge>}
+        {m.ownership === "RENTED" && <Badge tone="amber">On rent</Badge>}
       </div>
+      {m.ownership === "RENTED" && (
+        <Card title="Rental" hi="किराया">
+          <dl className="grid grid-cols-3 gap-y-1 text-sm">
+            <dt className="text-slate-500">From</dt>
+            <dd className="col-span-2">{m.rentVendor ?? "—"}</dd>
+            {isAdmin && m.rentPerMonth && (
+              <>
+                <dt className="text-slate-500">Rent</dt>
+                <dd className="col-span-2">{formatINR(m.rentPerMonth)} per month</dd>
+              </>
+            )}
+            <dt className="text-slate-500">Period</dt>
+            <dd className="col-span-2">{m.rentFrom ? formatDate(m.rentFrom) : "—"} → {m.rentTo ? formatDate(m.rentTo) : "open"}</dd>
+          </dl>
+        </Card>
+      )}
       <MachinePanel
         machine={{ id: m.id, status: m.status, siteId: m.siteId, siteName: m.site?.name ?? null }}
         isAdmin={isAdmin}
@@ -75,6 +93,7 @@ export default async function MachineDetailPage({ params }: { params: Promise<{ 
           </ul>
         )}
       </Card>
+      {isAdmin && <DeleteButton entity="Machine" id={m.id} what={`machine ${m.machineNumber}`} to="/machines" full size="md" label="Delete this machine" />}
       <Card title="Dispatch / return register" hi="भेजना-वापसी">
         {m.dispatches.length === 0 ? <p className="text-sm text-slate-500">Never dispatched.</p> : (
           <ul className="divide-y text-sm">

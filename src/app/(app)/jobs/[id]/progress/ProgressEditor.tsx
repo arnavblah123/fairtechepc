@@ -4,15 +4,15 @@ import { useRouter } from "next/navigation";
 import type { Shift, Trade } from "@prisma/client";
 import { api, useSubmit } from "@/lib/client";
 import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Field";
+import { Input, Toggle } from "@/components/ui/Field";
 import { Bi } from "@/components/ui/Bi";
 import { Card } from "@/components/ui/Card";
 import { formatDate, formatNum } from "@/lib/format";
 import { TRADE_LABELS } from "@/lib/labels";
 
 type WorkerRow = { id: string; code: string; name: string; trade: Trade };
-type Entry = { qtyDone: string; percentComplete: string; remark: string; workers: { workerId: string; hours: number; shift: Shift }[] };
-type StageRow = { id: string; name: string; unit: string; plannedQty: number; entry: Entry | null };
+type Entry = { qtyDone: string; remark: string; workers: { workerId: string; hours: number; shift: Shift }[] };
+type StageRow = { id: string; name: string; unit: string; plannedQty: number; doneSoFar: number; done: boolean; entry: Entry | null };
 
 export function ProgressEditor({
   date,
@@ -42,33 +42,45 @@ export function ProgressEditor({
           </button>
         ))}
       </div>
-      {stages.map((s) => (
-        <Card key={s.id}>
-          <button className="flex w-full items-center justify-between" onClick={() => setOpen(open === s.id ? null : s.id)}>
-            <div className="text-left">
-              <div className="font-semibold">{s.name}</div>
-              <div className="text-xs text-slate-500">
-                Planned {formatNum(s.plannedQty)} {s.unit}
-                {s.entry ? ` · today: ${s.entry.qtyDone} ${s.unit}, ${s.entry.percentComplete}% · ${s.entry.workers.length} workers` : " · no entry"}
+      <p className="rounded-xl bg-blue-50 p-3 text-sm text-blue-900">
+        <Bi en="Enter only how much work was done today. The app works out the progress — no percentages to guess." hi="सिर्फ़ आज कितना काम हुआ वह भरें। प्रतिशत ऐप खुद निकालेगा।" />
+      </p>
+      {stages.map((s) => {
+        const pct = s.done ? 100 : s.plannedQty > 0 ? Math.min(100, Math.round((s.doneSoFar / s.plannedQty) * 100)) : 0;
+        return (
+          <Card key={s.id}>
+            <button className="flex w-full items-center justify-between gap-2" onClick={() => setOpen(open === s.id ? null : s.id)}>
+              <div className="min-w-0 text-left">
+                <div className="font-semibold">
+                  {s.name} {s.done && <span className="text-green-600">✓</span>}
+                </div>
+                <div className="text-xs text-slate-500">
+                  {formatNum(s.doneSoFar)} / {formatNum(s.plannedQty)} {s.unit} done ({pct}%)
+                  {s.entry ? ` · today: ${s.entry.qtyDone} ${s.unit}, ${s.entry.workers.length} workers` : " · nothing entered today"}
+                </div>
+                <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                  <div className={`h-full ${s.done ? "bg-green-600" : "bg-brand"}`} style={{ width: `${pct}%` }} />
+                </div>
               </div>
-            </div>
-            <span className={`text-xl text-slate-400 transition ${open === s.id ? "rotate-90" : ""}`}>›</span>
-          </button>
-          {open === s.id && <StageForm key={date} stage={s} date={date} workers={workers} busyWorkers={busyWorkers} />}
-        </Card>
-      ))}
+              <span className={`text-xl text-slate-400 transition ${open === s.id ? "rotate-90" : ""}`}>›</span>
+            </button>
+            {open === s.id && <StageForm key={date} stage={s} date={date} workers={workers} busyWorkers={busyWorkers} />}
+          </Card>
+        );
+      })}
     </div>
   );
 }
 
 function StageForm({ stage, date, workers, busyWorkers }: { stage: StageRow; date: string; workers: WorkerRow[]; busyWorkers: Record<string, string> }) {
   const [qty, setQty] = useState(stage.entry?.qtyDone ?? "");
-  const [pct, setPct] = useState(stage.entry?.percentComplete ?? "");
   const [remark, setRemark] = useState(stage.entry?.remark ?? "");
+  const [complete, setComplete] = useState(stage.done);
   const [sel, setSel] = useState<Map<string, number>>(new Map((stage.entry?.workers ?? []).map((w) => [w.workerId, w.hours])));
   const [showPick, setShowPick] = useState(false);
   const { busy, submit } = useSubmit();
   const mine = new Set((stage.entry?.workers ?? []).map((w) => w.workerId));
+  const remaining = Math.max(0, stage.plannedQty - stage.doneSoFar + Number(stage.entry?.qtyDone ?? 0));
 
   return (
     <form
@@ -81,7 +93,7 @@ function StageForm({ stage, date, workers, busyWorkers }: { stage: StageRow; dat
               stageId: stage.id,
               date,
               qtyDone: Number(qty || 0),
-              percentComplete: Number(pct || 0),
+              stageComplete: complete,
               remark,
               workers: [...sel.entries()].map(([workerId, hours]) => ({ workerId, hours, shift: "DAY" })),
             },
@@ -89,10 +101,22 @@ function StageForm({ stage, date, workers, busyWorkers }: { stage: StageRow; dat
         );
       }}
     >
-      <div className="grid grid-cols-2 gap-2">
-        <Input label={`Qty done today (${stage.unit})`} hi="आज की मात्रा" value={qty} onChange={(e) => setQty(e.target.value)} inputMode="decimal" required />
-        <Input label="Total % complete" hi="कुल %" value={pct} onChange={(e) => setPct(e.target.value)} inputMode="numeric" required />
-      </div>
+      <Input
+        label={`Quantity done today (${stage.unit})`}
+        hi="आज कितना काम हुआ"
+        value={qty}
+        onChange={(e) => setQty(e.target.value)}
+        inputMode="decimal"
+        required
+        hint={`${formatNum(remaining)} ${stage.unit} left to reach the plan`}
+      />
+      <Toggle
+        label="This stage is finished"
+        hi="यह स्टेज पूरी हो गई"
+        checked={complete}
+        onChange={setComplete}
+        hint="Tick only when nothing more is left in this stage."
+      />
       <div>
         <div className="mb-1 text-sm font-semibold text-slate-700">
           <Bi en={`Workers on this stage (${sel.size})`} hi="इस स्टेज पर मज़दूर" inline />

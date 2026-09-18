@@ -116,7 +116,13 @@ export async function runSeed(prisma: PrismaClient, opts: SeedOptions) {
   ]) {
     await prisma.user.upsert({ where: { username: u.username }, update: {}, create: { ...u, passwordHash: await bcrypt.hash("site123", 10), siteId: site.id } });
   }
-  log("Sample users: incharge / supervisor (password: site123)");
+  // The purchase desk sits in Pune and is not attached to a site.
+  await prisma.user.upsert({
+    where: { username: "purchase" },
+    update: {},
+    create: { username: "purchase", name: "Purchase (Pune)", role: "PURCHASE", passwordHash: await bcrypt.hash("site123", 10) },
+  });
+  log("Sample users: incharge / supervisor / purchase (password: site123)");
 
   const jobNumber = `${site.code}-001`;
   if (!(await prisma.job.findUnique({ where: { jobNumber } }))) {
@@ -128,7 +134,7 @@ export async function runSeed(prisma: PrismaClient, opts: SeedOptions) {
         clientName: "Sample Client Ltd",
         description: "Fabrication of columns, beams and bracings for boiler support structure.",
         drawingRef: "DWG-BSS-001 to 014",
-        plannedTonnage: 120,
+        plannedTonnage: 120, // reference only; progress is tracked stage by stage
         plannedStart: date(2026, 9, 1),
         plannedEnd: date(2026, 12, 15),
         weldingNormKgPerMT: 12,
