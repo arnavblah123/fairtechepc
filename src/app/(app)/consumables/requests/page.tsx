@@ -7,8 +7,9 @@ import { EmptyState } from "@/components/ui/Card";
 import { RequestsBoard } from "./RequestsBoard";
 import { dateToKey } from "@/lib/format";
 
-export default async function ConsRequestsPage() {
+export default async function ConsRequestsPage({ searchParams }: { searchParams: Promise<{ new?: string }> }) {
   const user = await requirePage("consumable.view");
+  const openNew = (await searchParams).new === "1";
   const site = await getCurrentSite(user);
   if (!site) return <EmptyState en="No site selected." />;
   const [requests, items] = await Promise.all([
@@ -32,6 +33,7 @@ export default async function ConsRequestsPage() {
       <RequestsBoard
         siteId={site.id}
         canRequest={can(user.role, "consumable.request")}
+        openNew={openNew}
         canApprove={can(user.role, "consumable.approve")}
         canOrder={can(user.role, "consumable.order")}
         canShip={can(user.role, "consumable.dispatch")}

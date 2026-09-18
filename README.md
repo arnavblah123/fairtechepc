@@ -29,6 +29,13 @@ planned quantity, and the job's overall figure by weighting stages by their
 inspection. The dashboard compares that against where the plan says the job
 should be today.
 
+### Supervisor quick actions
+
+The site home screen leads with four large buttons, above the daily routine:
+**Ask for material**, **Machine repair**, **Raise issue** and **Store stock**.
+Machine repair lists the machines at the site, marks ones that already have an
+open ticket, and takes a single description to raise the breakdown ticket.
+
 ### Who does what in purchasing
 
 1. **Site supervisor** raises a material request (item, quantity, reason, needed-by).

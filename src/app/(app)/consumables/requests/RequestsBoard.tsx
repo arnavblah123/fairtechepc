@@ -28,12 +28,12 @@ const FULFILMENT_LABEL: Record<string, string> = {
  * → site inwards and accepts.
  */
 export function RequestsBoard({
-  siteId, canRequest, canApprove, canOrder, canShip, canClose, canDelete, items, requests,
+  siteId, canRequest, canApprove, canOrder, canShip, canClose, canDelete, items, requests, openNew = false,
 }: {
-  siteId: string; canRequest: boolean; canApprove: boolean; canOrder: boolean; canShip: boolean; canClose: boolean; canDelete: boolean;
+  siteId: string; canRequest: boolean; canApprove: boolean; canOrder: boolean; canShip: boolean; canClose: boolean; canDelete: boolean; openNew?: boolean;
   items: { id: string; name: string; unit: string }[]; requests: Req[];
 }) {
-  const [showNew, setShowNew] = useState(false);
+  const [showNew, setShowNew] = useState(openNew && canRequest);
   const [itemId, setItemId] = useState(items[0]?.id ?? "");
   const [qty, setQty] = useState("");
   const [reason, setReason] = useState("");

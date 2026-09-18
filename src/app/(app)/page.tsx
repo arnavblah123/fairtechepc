@@ -136,6 +136,33 @@ async function SiteHome() {
         <Stat label="Present today" hi="आज हाज़िर" value={`${present} / ${workers}`} tone={present ? "green" : "amber"} />
         <Stat label="Open issues" hi="खुली समस्याएँ" value={openIssues} tone={openIssues ? "red" : "green"} />
       </div>
+      {/* The four things a supervisor needs to start without hunting through menus. */}
+      <Card title="Need something?" hi="कुछ चाहिए?">
+        <div className="grid grid-cols-2 gap-2">
+          {can(user.role, "consumable.request") && (
+            <Link href="/consumables/requests?new=1" className="flex min-h-[92px] flex-col items-center justify-center gap-1 rounded-xl bg-brand px-2 text-center text-white">
+              <span className="text-2xl leading-none">📦</span>
+              <Bi en="Ask for material" hi="सामान माँगें" className="text-sm font-semibold leading-tight" />
+            </Link>
+          )}
+          {can(user.role, "machine.ticket") && (
+            <Link href="/machines/repair" className="flex min-h-[92px] flex-col items-center justify-center gap-1 rounded-xl bg-slate-800 px-2 text-center text-white">
+              <span className="text-2xl leading-none">🔧</span>
+              <Bi en="Machine repair" hi="मशीन मरम्मत" className="text-sm font-semibold leading-tight" />
+            </Link>
+          )}
+          {can(user.role, "issue.raise") && (
+            <Link href="/issues/new" className="flex min-h-[92px] flex-col items-center justify-center gap-1 rounded-xl bg-red-600 px-2 text-center text-white">
+              <span className="text-2xl leading-none">⚠</span>
+              <Bi en="Raise issue" hi="समस्या बताएँ" className="text-sm font-semibold leading-tight" />
+            </Link>
+          )}
+          <Link href="/consumables" className="flex min-h-[92px] flex-col items-center justify-center gap-1 rounded-xl border-2 border-slate-300 bg-white px-2 text-center text-slate-700">
+            <span className="text-2xl leading-none">🏪</span>
+            <Bi en="Store stock" hi="स्टोर स्टॉक" className="text-sm font-semibold leading-tight" />
+          </Link>
+        </div>
+      </Card>
       {canMark && (
         <Card title="Today's routine" hi="आज का काम">
           <ul className="divide-y">
@@ -150,10 +177,6 @@ async function SiteHome() {
           </ul>
         </Card>
       )}
-      <div className="grid grid-cols-2 gap-2">
-        <LinkButton href="/issues/new" variant="danger">⚠ <Bi en="Raise issue" hi="समस्या" /></LinkButton>
-        <LinkButton href="/consumables" variant="outline"><Bi en="Store" hi="स्टोर" /></LinkButton>
-      </div>
     </div>
   );
 }

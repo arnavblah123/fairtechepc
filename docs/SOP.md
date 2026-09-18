@@ -35,6 +35,16 @@ Open the app from the home-screen icon. Login once; it stays logged in.
 8. Green **"Saved ✓"** means it reached the server. If you see red, check internet and try again.
    हरा **"Saved ✓"** मतलब सर्वर तक पहुँच गया। लाल दिखे तो इंटरनेट देखकर दोबारा करें।
 
+## Need something during the day? / दिन में कुछ चाहिए?
+
+On the **home screen** there are four big buttons — no need to hunt through menus:
+होम स्क्रीन पर चार बड़े बटन हैं:
+
+* **Ask for material / सामान माँगें** — raise a request for any consumable. Arnav approves, Pune orders it.
+* **Machine repair / मशीन मरम्मत** — pick the machine that is not working and say what is wrong.
+* **Raise issue / समस्या बताएँ** — anything that is holding up work.
+* **Store stock / स्टोर स्टॉक** — see what is on hand right now.
+
 **Forgot password? Call Arnav.** · **पासवर्ड भूल गए? अरनव को फ़ोन करें।**
 
 *Modules for photos, DPR, consumables, issues, machines and petty cash go live in later phases; until then follow the same routine on the screens that exist.*
