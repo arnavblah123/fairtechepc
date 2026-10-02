@@ -12,13 +12,14 @@ export default async function ConsRequestsPage({ searchParams }: { searchParams:
   const openNew = (await searchParams).new === "1";
   const site = await getCurrentSite(user);
   if (!site) return <EmptyState en="No site selected." />;
-  const [requests, items] = await Promise.all([
+  const [requests, items, vendors] = await Promise.all([
     prisma.consumableRequest.findMany({
       where: { siteId: site.id, voidedAt: null },
-      orderBy: [{ status: "asc" }, { requestedAt: "desc" }],
-      take: 100,
+      orderBy: [{ requestedAt: "desc" }],
+      take: 200,
       include: {
         item: { select: { name: true, unit: true } },
+        indent: { select: { id: true, indentNo: true, reason: true, note: true } },
         requestedBy: { select: { name: true } },
         decidedBy: { select: { name: true } },
         orderedBy: { select: { name: true } },
@@ -26,23 +27,28 @@ export default async function ConsRequestsPage({ searchParams }: { searchParams:
       },
     }),
     prisma.consumableItem.findMany({ where: { active: true }, orderBy: { name: "asc" }, select: { id: true, name: true, unit: true } }),
+    prisma.party.findMany({ where: { siteId: site.id, active: true, kind: "VENDOR" }, orderBy: { name: "asc" }, select: { name: true } }),
   ]);
   return (
     <div>
       <PageHeader title="Material requests" hi="सामान रिक्वेस्ट" back="/consumables" />
+      <datalist id="vendor-names">{vendors.map((v) => (<option key={v.name} value={v.name} />))}</datalist>
       <RequestsBoard
         siteId={site.id}
         canRequest={can(user.role, "consumable.request")}
-        openNew={openNew}
         canApprove={can(user.role, "consumable.approve")}
         canOrder={can(user.role, "consumable.order")}
         canShip={can(user.role, "consumable.dispatch")}
         canClose={can(user.role, "consumable.receive")}
         canDelete={can(user.role, "record.delete")}
         canPropose={can(user.role, "item.propose")}
+        showPrices={can(user.role, "money.view") || user.role === "PURCHASE"}
+        openNew={openNew}
         items={items}
         requests={requests.map((r) => ({
           id: r.id,
+          indentId: r.indent?.id ?? null,
+          indentNo: r.indent?.indentNo ?? null,
           item: r.item.name,
           unit: r.item.unit,
           qty: Number(r.qty),

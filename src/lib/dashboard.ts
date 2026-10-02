@@ -38,7 +38,7 @@ export async function siteDashboard(siteId: string) {
     prisma.expense.findMany({
       where: { siteId, status: { in: ["PENDING", "QUERIED"] }, voidedAt: null },
       orderBy: { date: "asc" },
-      include: { category: { select: { name: true } }, spentBy: { select: { name: true } } },
+      include: { category: { select: { name: true } }, spentBy: { select: { name: true } }, bill: { select: { id: true, payeeText: true, billPhotoUrl: true } } },
     }),
     prisma.expense.findMany({
       where: { siteId, status: "APPROVED", voidedAt: null, date: { gte: monthStart } },
@@ -119,13 +119,29 @@ export async function siteDashboard(siteId: string) {
     pendingCons: pendingCons.map((r) => ({ id: r.id, label: `${r.item.name} × ${Number(r.qty)} ${r.item.unit}`, sub: `${r.reason} — ${r.requestedBy.name}` })),
     pendingPetty: pendingPetty.map((r) => ({ id: r.id, amount: Number(r.amount), sub: `${r.reason} — ${r.requestedBy.name}`, urgency: r.urgency })),
     pendingItems: pendingItems.map((i) => ({ id: i.id, name: i.name, unit: i.unit, by: i.proposedBy?.name ?? "site" })),
-    pendingExpenses: pendingExpenses.map((e) => ({
-      id: e.id,
-      amount: Number(e.amount),
-      label: `${e.category.name}: ${e.description}`,
-      sub: `${e.spentBy.name}${e.billPhotoUrl ? "" : e.entryType === "PURCHASE" ? " · no bill" : ""}`,
-      status: e.status,
-    })),
+    // One row per bill (all its waiting lines together), plus single entries without a bill.
+    pendingExpenses: (() => {
+      const rows: { id: string; endpoint: string; amount: number; label: string; sub: string; status: string }[] = [];
+      const seen = new Set<string>();
+      for (const e of pendingExpenses) {
+        if (e.bill) {
+          if (seen.has(e.bill.id)) continue;
+          seen.add(e.bill.id);
+          const lines = pendingExpenses.filter((x) => x.bill?.id === e.bill!.id);
+          rows.push({
+            id: e.bill.id,
+            endpoint: `/api/bills/${e.bill.id}/decide`,
+            amount: Number(lines.reduce((a, x) => a + Number(x.amount), 0).toFixed(2)),
+            label: `${e.bill.payeeText ?? "Bill"} — ${lines.length} line${lines.length === 1 ? "" : "s"}`,
+            sub: `${e.spentBy.name}${e.bill.billPhotoUrl ? "" : e.entryType === "PURCHASE" ? " · no bill photo" : ""}`,
+            status: e.status,
+          });
+        } else {
+          rows.push({ id: e.id, endpoint: `/api/expenses/${e.id}/decide`, amount: Number(e.amount), label: `${e.category.name}: ${e.description}`, sub: `${e.spentBy.name}${e.billPhotoUrl ? "" : e.entryType === "PURCHASE" ? " · no bill" : ""}`, status: e.status });
+        }
+      }
+      return rows;
+    })(),
     spendByCategory,
     monthTotal,
     cashHolders,

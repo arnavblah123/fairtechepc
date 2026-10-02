@@ -40,6 +40,9 @@ export default async function ConsumablesPage() {
             {pendingRequests > 0 && <span className="absolute -right-1 -top-1 rounded-full bg-red-600 px-2 py-0.5 text-xs">{pendingRequests}</span>}
           </Link>
         )}
+        {can(user.role, "vendor.view") && (
+          <Link href="/vendors" className="rounded-xl border-2 border-slate-300 bg-white py-3 text-slate-700"><Bi en="Vendors" hi="दुकानें" /></Link>
+        )}
         <Link href="/consumables/dispatches" className="relative rounded-xl border-2 border-slate-300 bg-white py-3 text-slate-700">
           <Bi en="Dispatches" hi="भेजा गया माल" />
           {pendingReceipts > 0 && can(user.role, "consumable.receive") && <span className="absolute -right-1 -top-1 rounded-full bg-amber-500 px-2 py-0.5 text-xs text-white">{pendingReceipts}</span>}

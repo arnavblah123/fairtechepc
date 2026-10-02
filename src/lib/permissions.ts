@@ -57,6 +57,7 @@ export const CAPABILITIES = {
   "expense.approve": ["SUPERADMIN"],
   "cash.view": ["SUPERADMIN"], // who is holding how much
   "cash.move": ["SUPERADMIN"], // issue, take back or correct someone's cash
+  "vendor.view": ["SUPERADMIN", "SITE_INCHARGE", "SUPERVISOR", "PURCHASE", "VIEWER"], // payee ledger with bills and photos
   // money
   "petty.request": ["SITE_INCHARGE", "SUPERVISOR"],
   "petty.approve": ["SUPERADMIN"],

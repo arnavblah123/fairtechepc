@@ -339,7 +339,7 @@ async function AdminDashboard() {
               <ApprovalRow key={r.id} endpoint={`/api/items/${r.id}/decide`} label={<>🆕 New item: {r.name} ({r.unit})</>} sub={`added by ${r.by} while ordering`} extraApprove={[{ label: "✓ Keep in master", body: { decision: "APPROVED" } }]} />
             ))}
             {d.pendingExpenses.map((r) => (
-              <ApprovalRow key={r.id} endpoint={`/api/expenses/${r.id}/decide`} label={<>🧾 {formatINR(r.amount)} — {r.label}</>} sub={r.sub} />
+              <ApprovalRow key={r.id} endpoint={r.endpoint} label={<>🧾 {formatINR(r.amount)} — {r.label}</>} sub={r.sub} />
             ))}
           </ul>
         )}

@@ -29,7 +29,8 @@ const SECTIONS: { title: string; hi: string; items: Item[] }[] = [
     title: "Money",
     hi: "पैसा",
     items: [
-      { href: "/expenses", en: "Petty cash expenses", hi: "पेटी कैश खर्च", cap: "expense.view" },
+      { href: "/expenses", en: "Bills & expenses", hi: "बिल और खर्च", cap: "expense.view" },
+      { href: "/vendors", en: "Vendors & payees ledger", hi: "दुकानों का खाता", cap: "vendor.view" },
       { href: "/cash", en: "Cash in hand (who holds what)", hi: "किसके पास कितना कैश", cap: "cash.view" },
       { href: "/petty-cash", en: "Site cash book", hi: "साइट बही", caps: ["money.view", "petty.expense", "petty.request"] },
       { href: "/advances", en: "Worker advances", hi: "एडवांस", caps: ["advance.approve", "advance.request"] },

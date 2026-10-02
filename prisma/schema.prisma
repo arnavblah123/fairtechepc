@@ -63,6 +63,9 @@ model User {
   consRequestsOrdered    ConsumableRequest[]       @relation("ConsReqOrderedBy")
   jobMaterialsAdded      JobMaterial[]
   itemsProposed          ConsumableItem[]          @relation("ItemProposedBy")
+  indentsRaised          MaterialIndent[]          @relation("IndentRequestedBy")
+  billsSpent             Bill[]                    @relation("BillSpentBy")
+  billsEntered           Bill[]                    @relation("BillEnteredBy")
   expensesSpent          Expense[]                 @relation("ExpenseSpentBy")
   expensesEntered        Expense[]                 @relation("ExpenseEnteredBy")
   expensesDecided        Expense[]                 @relation("ExpenseDecidedBy")
@@ -111,6 +114,8 @@ model Site {
   jobs              Job[]
   jobMaterials      JobMaterial[]
   expenses          Expense[]
+  bills             Bill[]
+  indents           MaterialIndent[]
   parties           Party[]
   cashLedger        CashLedger[]
   stages            Stage[]
@@ -624,9 +629,40 @@ model Party {
   createdAt      DateTime  @default(now())
 
   expenses Expense[]
+  bills    Bill[]
+  orders   ConsumableRequest[] @relation("OrderVendor")
 
   @@unique([siteId, normalizedName])
   @@index([siteId, kind])
+}
+
+/// One bill from one payee on one day — a photo and several lines. Each line is
+/// an Expense, so approval and the cash ledger keep working per line, while the
+/// site enters the whole bill at once.
+model Bill {
+  id           String        @id @default(cuid())
+  siteId       String
+  site         Site          @relation(fields: [siteId], references: [id])
+  date         DateTime      @db.Date
+  partyId      String?
+  party        Party?        @relation(fields: [partyId], references: [id])
+  payeeText    String?
+  billNo       String?
+  billPhotoUrl String?
+  paidFrom     PaymentSource @default(WORKER_CASH)
+  note         String?
+  spentById    String
+  spentBy      User          @relation("BillSpentBy", fields: [spentById], references: [id])
+  enteredById  String
+  enteredBy    User          @relation("BillEnteredBy", fields: [enteredById], references: [id])
+  createdAt    DateTime      @default(now())
+  voidedAt     DateTime?
+  voidReason   String?
+
+  lines Expense[]
+
+  @@index([siteId, date])
+  @@index([partyId])
 }
 
 /// One recorded spend. Raised on site, approved by the superadmin; approval is
@@ -661,6 +697,8 @@ model Expense {
   solution String?
 
   billPhotoUrl String?
+  billId       String?
+  bill         Bill?   @relation(fields: [billId], references: [id])
 
   /// Whose cash this came out of. Approval debits this person's ledger.
   spentById String
@@ -995,12 +1033,35 @@ enum Fulfilment {
   LOCAL_PURCHASE // site buys locally against petty cash
 }
 
+/// A material indent: several items asked for together, one reason, one date.
+/// Each line is a ConsumableRequest so approval, ordering and inward still work per item.
+model MaterialIndent {
+  id            String    @id @default(cuid())
+  siteId        String
+  site          Site      @relation(fields: [siteId], references: [id])
+  indentNo      String    @unique // IND-001
+  reason        String
+  neededBy      DateTime  @db.Date
+  note          String?
+  requestedById String
+  requestedBy   User      @relation("IndentRequestedBy", fields: [requestedById], references: [id])
+  requestedAt   DateTime  @default(now())
+  voidedAt      DateTime?
+  voidReason    String?
+
+  lines ConsumableRequest[]
+
+  @@index([siteId, requestedAt])
+}
+
 model ConsumableRequest {
   id              String            @id @default(cuid())
   siteId          String
   site            Site              @relation(fields: [siteId], references: [id])
   itemId          String
   item            ConsumableItem    @relation(fields: [itemId], references: [id])
+  indentId        String?
+  indent          MaterialIndent?   @relation(fields: [indentId], references: [id])
   qty             Decimal           @db.Decimal(12, 3)
   reason          String
   neededBy        DateTime          @db.Date
@@ -1018,6 +1079,8 @@ model ConsumableRequest {
   purchasedAt     DateTime?
   // Purchase desk (Pune) order details
   vendorName      String?
+  vendorPartyId   String?
+  vendorParty     Party?            @relation("OrderVendor", fields: [vendorPartyId], references: [id])
   poNumber        String?
   unitPrice       Decimal?          @db.Decimal(12, 2)
   expectedDate    DateTime?         @db.Date

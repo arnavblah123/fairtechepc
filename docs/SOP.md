@@ -42,12 +42,11 @@ Open the app from the home-screen icon. Login once; it stays logged in.
 On the **home screen** there are four big buttons — no need to hunt through menus:
 होम स्क्रीन पर चार बड़े बटन हैं:
 
-* **Add expense / खर्च भरें** — every rupee spent from site cash, the same day. A purchase needs a bill photo; paying a person does not. Say honestly whether **you** paid or the office paid the shop — if you pick wrong, your cash will not tally at month end.
-* **Ask for material / सामान माँगें** — raise a request for any consumable. Arnav approves, Pune orders it.
+* **Add bill / बिल भरें** — every rupee spent from site cash, the same day. One bill, all its lines together; type the shop's name the same way every time. A purchase needs a bill photo; paying a person does not. Say honestly whether **you** paid or the office paid the shop — if you pick wrong, your cash will not tally at month end.
+* **Ask for material / सामान माँगें** — one request with everything you need (many items at once). Arnav approves, Pune orders it. Item not in the list? Add it there and then; Arnav will confirm it.
+* **Vendor ledger / दुकान का खाता** — under More: every bill and order for each shop, with photos.
 * **Machine repair / मशीन मरम्मत** — pick the machine that is not working and say what is wrong.
 * **Raise issue / समस्या बताएँ** — anything that is holding up work.
 * **Store stock / स्टोर स्टॉक** — see what is on hand right now.
 
 **Forgot password? Call Arnav.** · **पासवर्ड भूल गए? अरनव को फ़ोन करें।**
-
-*Modules for photos, DPR, consumables, issues, machines and petty cash go live in later phases; until then follow the same routine on the screens that exist.*

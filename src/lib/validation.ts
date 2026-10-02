@@ -315,6 +315,7 @@ export const consShipSchema = z.object({
 export const consCloseSchema = z.object({
   price: money,
   billPhotoUrl: z.string().min(1, "Bill photo is required").max(500),
+  vendorName: z.string().trim().min(2, "Which shop?").max(120),
 });
 
 // ---- Phase 7 ----
@@ -462,3 +463,36 @@ export const itemDecideSchema = z.object({
   decision: z.enum(["APPROVED", "REJECTED"]),
   note: z.string().trim().max(300).optional().or(z.literal("")),
 });
+
+
+// ---- Material indent: several items in one request ----
+export const indentSchema = z.object({
+  reason: z.string().trim().min(3).max(300),
+  neededBy: dateKey,
+  note: z.string().trim().max(300).optional().or(z.literal("")),
+  items: z.array(z.object({ itemId: z.string().min(1), qty: z.coerce.number().positive().max(999999) })).min(1, "Add at least one item").max(40),
+});
+export const indentDecideSchema = consDecideSchema;
+
+// ---- Bill: one payee, one photo, several lines ----
+export const billLineSchema = z.object({
+  categoryId: z.string().min(1, "Choose a category"),
+  description: z.string().trim().min(2, "Say what it was").max(300),
+  amount: z.coerce.number().positive("Amount must be more than 0").max(9999999),
+  jobId: z.string().optional().nullable(),
+  workerId: z.string().optional().nullable(),
+  machineId: z.string().optional().nullable(),
+  problem: z.string().trim().max(300).optional().or(z.literal("")),
+  solution: z.string().trim().max(300).optional().or(z.literal("")),
+});
+export const billSchema = z.object({
+  date: dateKey,
+  payeeText: z.string().trim().min(2, "Who was paid?").max(120),
+  billNo: z.string().trim().max(60).optional().or(z.literal("")),
+  paidFrom: paymentSourceSchema.default("WORKER_CASH"),
+  billPhotoUrl: z.string().max(500).optional().or(z.literal("")),
+  note: z.string().trim().max(500).optional().or(z.literal("")),
+  spentById: z.string().optional().nullable(),
+  lines: z.array(billLineSchema).min(1, "Add at least one line").max(40),
+});
+export const billDecideSchema = expenseDecideSchema;

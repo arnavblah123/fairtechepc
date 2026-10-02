@@ -13,9 +13,10 @@ Mobile-first web app for supervising a remote fabrication site. Supervisors upda
 | Stage progress (quantity-based), DPR (compile, submit, print) | ✅ |
 | Geotagged 5-slot daily photos, gallery | ✅ |
 | Issues with escalation | ✅ |
-| Material plan per job, request → approval → purchase order → dispatch → inward & acceptance | ✅ |
+| Material plan per job, multi-item indent → approval → purchase order → dispatch → inward & acceptance | ✅ |
 | Machines: owned or rented, dispatch/return, status, breakdown tickets with sign-off | ✅ |
-| Petty cash expenses: cash-in-hand ledger, approval, reversals, spend analysis | ✅ |
+| Bills with several lines, cash-in-hand ledger, approval, reversals, spend analysis | ✅ |
+| Vendor / payee ledger: every bill, photo and purchase order under one saved name | ✅ |
 | Advances, wage sheets, site cash book | ✅ |
 | Superadmin exception dashboard with one-tap approvals | ✅ |
 | Delete (with reason + audit trail) on every record type | ✅ |
@@ -44,13 +45,23 @@ There is no auto-approve threshold.
 
 ### Who does what in purchasing
 
-1. **Site supervisor** raises a material request (item, quantity, reason, needed-by).
-2. **Arnav** approves or rejects, and chooses: purchase desk buys, send from factory, or site buys locally.
+1. **Site supervisor** raises one **indent** with everything needed (several items and quantities, one reason, one needed-by date). An item missing from the list can be added on the spot; it is flagged for Arnav.
+2. **Arnav** approves or rejects the whole indent in one tap (or line by line), and chooses: purchase desk buys, send from factory, or site buys locally.
 3. **Purchase (Pune)** places the order with a vendor (vendor, PO number, rate, expected date) and dispatches it.
 4. **Site** inwards the consignment, enters the quantity actually received, and a short receipt is flagged with a reason. Stock goes up only on acceptance.
 
 Every job also carries a **material plan**: all consumables it will need, entered
 before work starts, so requests can be read against the plan.
+
+### Bills and the vendor ledger
+
+A bill is entered once with all its lines (what, how much, category, job). Arnav
+approves the whole bill or individual lines; approving is what moves the money
+in the spender's cash-in-hand ledger and the site cash book. The payee name is
+saved, so the same shop typed again lands in the same ledger. **Vendors & payees**
+(More menu) shows, per shop or person, every bill with its photo and lines, and
+every purchase order placed with them. Supervisors and the site in-charge can
+see the ledger; purchase-order rates show only to Arnav and the purchase desk.
 
 ### Deleting things
 
