@@ -12,9 +12,9 @@ export default async function NewJobPage() {
     <div>
       <PageHeader title="New job" hi="नया काम" back="/jobs" />
       <p className="mb-3 text-sm text-slate-500">
-        Site: <b>{site.name}</b>. Job number will be {site.code}-XXX automatically.
+        Site: <b>{site.name}</b>. Job number will be {site.code}-XXX automatically. Write the stages below and save once.
       </p>
-      <JobForm siteId={site.id} withPreset />
+      <JobForm siteId={site.id} />
     </div>
   );
 }

@@ -7,20 +7,17 @@ import { Input, Select } from "@/components/ui/Field";
 import { Bi } from "@/components/ui/Bi";
 import { Card } from "@/components/ui/Card";
 import { DeleteButton } from "@/components/forms/DeleteButton";
-import { STAGE_PRESETS } from "@/lib/validation";
+import { StageGrid, blankStage, presetStages, usableStages, type StageDraft } from "../../StageGrid";
 
 type StageRow = { id: string; sequence: number; name: string; unit: QtyUnit; plannedQty: number; plannedDays: number; hasProgress: boolean };
-type Draft = { name: string; unit: QtyUnit; plannedQty: string; plannedDays: string };
 const UNITS: QtyUnit[] = ["MT", "NOS", "METRE", "SQM"];
-const PRESET_DAYS = [10, 12, 20, 25, 10, 6, 12, 15];
-
-const blank = (): Draft => ({ name: "", unit: "MT", plannedQty: "", plannedDays: "" });
 
 export function StageManager({ jobId, stages, canDelete }: { jobId: string; stages: StageRow[]; canDelete: boolean }) {
   const { busy, submit } = useSubmit();
   const [editing, setEditing] = useState<string | null>(null);
-  const [drafts, setDrafts] = useState<Draft[]>(stages.length === 0 ? PRESET_DRAFTS() : [blank()]);
+  const [drafts, setDrafts] = useState<StageDraft[]>(stages.length === 0 ? presetStages() : [blankStage()]);
   const [adding, setAdding] = useState(stages.length === 0);
+  const [withQty, setWithQty] = useState(stages.some((s) => s.plannedQty > 0));
 
   const move = (idx: number, dir: -1 | 1) => {
     const order = stages.map((s) => s.id);
@@ -30,16 +27,12 @@ export function StageManager({ jobId, stages, canDelete }: { jobId: string; stag
     submit(() => api(`/api/jobs/${jobId}/stages/reorder`, { body: { order } }));
   };
 
-  const patchDraft = (i: number, p: Partial<Draft>) => setDrafts(drafts.map((d, j) => (j === i ? { ...d, ...p } : d)));
-
   const saveAll = async () => {
-    const rows = drafts
-      .filter((d) => d.name.trim())
-      .map((d) => ({ name: d.name.trim(), unit: d.unit, plannedQty: Number(d.plannedQty || 0), plannedDays: Number(d.plannedDays || 0) }));
+    const rows = usableStages(drafts);
     if (!rows.length) return;
     const r = await submit(() => api(`/api/jobs/${jobId}/stages/bulk`, { body: { stages: rows } }));
     if (r) {
-      setDrafts([blank()]);
+      setDrafts([blankStage()]);
       setAdding(false);
     }
   };
@@ -76,7 +69,7 @@ export function StageManager({ jobId, stages, canDelete }: { jobId: string; stag
                     <div className="min-w-0 flex-1">
                       <div className="font-semibold">{s.sequence}. {s.name}</div>
                       <div className="text-xs text-slate-500">
-                        {s.plannedQty} {s.unit} · {s.plannedDays} days
+                        {s.plannedDays} days{s.plannedQty > 0 ? ` · ${s.plannedQty} ${s.unit}` : ""}
                         {s.hasProgress && " · has progress"}
                       </div>
                     </div>
@@ -93,67 +86,23 @@ export function StageManager({ jobId, stages, canDelete }: { jobId: string; stag
       {adding ? (
         <Card title="Write all stages" hi="सारी स्टेज एक साथ लिखें">
           <p className="mb-3 text-sm text-slate-600">
-            <Bi en="Fill every stage here and save once. Leave a row blank to skip it." hi="सारी स्टेज यहीं भरें और एक बार सेव करें।" />
+            <Bi en="Name and planned days for each. Save once." hi="हर स्टेज का नाम और दिन। एक बार सेव करें।" />
           </p>
-          <div className="space-y-2">
-            {drafts.map((d, i) => (
-              <div key={i} className="rounded-xl border border-slate-200 p-2">
-                <div className="flex items-center gap-2">
-                  <span className="w-5 shrink-0 text-center text-sm font-bold text-slate-400">{stages.length + i + 1}</span>
-                  <input
-                    className="min-w-0 flex-1 rounded-lg border-2 border-slate-300 p-2 text-base"
-                    placeholder="Stage name"
-                    list="stage-presets"
-                    value={d.name}
-                    onChange={(e) => patchDraft(i, { name: e.target.value })}
-                  />
-                  <button type="button" aria-label="Remove row" className="px-1 font-bold text-red-600" onClick={() => setDrafts(drafts.filter((_, j) => j !== i))}>✕</button>
-                </div>
-                <div className="mt-2 flex gap-2 pl-7 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                  <span className="w-24">Unit</span>
-                  <span className="flex-1">Quantity</span>
-                  <span className="flex-1">Days</span>
-                </div>
-                <div className="mt-0.5 flex gap-2 pl-7">
-                  <select className="w-24 rounded-lg border-2 border-slate-300 p-2 text-sm" value={d.unit} onChange={(e) => patchDraft(i, { unit: e.target.value as QtyUnit })} aria-label="Unit">
-                    {UNITS.map((u) => (<option key={u} value={u}>{u}</option>))}
-                  </select>
-                  <input className="min-w-0 flex-1 rounded-lg border-2 border-slate-300 p-2 text-sm" inputMode="decimal" placeholder="e.g. 120" value={d.plannedQty} onChange={(e) => patchDraft(i, { plannedQty: e.target.value })} aria-label="Planned quantity" />
-                  <input className="min-w-0 flex-1 rounded-lg border-2 border-slate-300 p-2 text-sm" inputMode="numeric" placeholder="e.g. 10" value={d.plannedDays} onChange={(e) => patchDraft(i, { plannedDays: e.target.value })} aria-label="Planned days" />
-                </div>
-              </div>
-            ))}
-          </div>
-          <datalist id="stage-presets">
-            {STAGE_PRESETS.map((p) => (<option key={p} value={p} />))}
-          </datalist>
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <Button type="button" variant="outline" onClick={() => setDrafts([...drafts, blank()])}>+ Add row</Button>
-            <Button type="button" variant="outline" onClick={() => setDrafts([...drafts.filter((d) => d.name.trim()), ...PRESET_DRAFTS()])}>Fill standard 8</Button>
-          </div>
-          <Button size="lg" full className="mt-2" loading={busy} onClick={saveAll}>
-            <Bi en={`Save ${drafts.filter((d) => d.name.trim()).length} stages`} hi="सारी स्टेज सेव करें" />
+          <StageGrid drafts={drafts} onChange={setDrafts} startAt={stages.length + 1} withQty={withQty} onToggleQty={setWithQty} />
+          <Button size="lg" full className="mt-3" loading={busy} onClick={saveAll}>
+            <Bi en={`Save ${usableStages(drafts).length} stages`} hi="सारी स्टेज सेव करें" />
           </Button>
           {stages.length > 0 && (
             <button className="mt-2 w-full text-sm font-semibold text-slate-500" onClick={() => setAdding(false)}>Cancel</button>
           )}
         </Card>
       ) : (
-        <Button full variant="outline" onClick={() => { setDrafts([blank()]); setAdding(true); }}>
+        <Button full variant="outline" onClick={() => { setDrafts([blankStage()]); setAdding(true); }}>
           + <Bi en="Add more stages" hi="और स्टेज जोड़ें" />
         </Button>
       )}
     </div>
   );
-}
-
-function PRESET_DRAFTS(): Draft[] {
-  return STAGE_PRESETS.map((name, i) => ({
-    name,
-    unit: name.startsWith("Blasting") ? "SQM" : "MT",
-    plannedQty: "",
-    plannedDays: String(PRESET_DAYS[i] ?? 10),
-  }));
 }
 
 function SingleStageForm({
@@ -176,7 +125,7 @@ function SingleStageForm({
       className="space-y-3"
       onSubmit={(e) => {
         e.preventDefault();
-        onSave({ name, unit, plannedQty: Number(qty), plannedDays: Number(days) });
+        onSave({ name, unit, plannedQty: Number(qty || 0), plannedDays: Number(days) });
       }}
     >
       <Input label="Stage name" hi="स्टेज नाम" value={name} onChange={(e) => setName(e.target.value)} required list="stage-presets" />
@@ -184,7 +133,7 @@ function SingleStageForm({
         <Select label="Unit" hi="इकाई" value={unit} onChange={(e) => setUnit(e.target.value as QtyUnit)}>
           {UNITS.map((u) => (<option key={u} value={u}>{u}</option>))}
         </Select>
-        <Input label="Planned qty" hi="मात्रा" value={qty} onChange={(e) => setQty(e.target.value)} inputMode="decimal" required />
+        <Input label="Qty (optional)" hi="मात्रा" value={qty} onChange={(e) => setQty(e.target.value)} inputMode="decimal" />
         <Input label="Planned days" hi="दिन" value={days} onChange={(e) => setDays(e.target.value)} inputMode="numeric" required />
       </div>
       <div className="flex gap-2">

@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { assertSiteAccess } from "@/lib/site";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ProgressEditor } from "./ProgressEditor";
-import { istDateKey, addDays, dateKeyToDate } from "@/lib/format";
+import { istDateKey, addDays, dateKeyToDate, dateToKey, daysBetween } from "@/lib/format";
 
 export default async function ProgressPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ date?: string }> }) {
   const user = await requirePage("stage.progress");
@@ -49,6 +49,8 @@ export default async function ProgressPage({ params, searchParams }: { params: P
             name: `${s.sequence}. ${s.name}`,
             unit: s.unit,
             plannedQty: Number(s.plannedQty),
+            plannedDays: s.plannedDays,
+            daysUsed: s.actualStart ? daysBetween(dateToKey(s.actualStart), s.actualEnd ? dateToKey(s.actualEnd) : today) + 1 : 0,
             doneSoFar: cumulative.get(s.id) ?? 0,
             done: !!s.actualEnd,
             entry: p

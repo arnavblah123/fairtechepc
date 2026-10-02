@@ -34,7 +34,6 @@ export const POST = withAuth("job.manage", async ({ user, req, ip }) => {
             clientName: body.clientName,
             description: body.description || null,
             drawingRef: body.drawingRef || null,
-            plannedTonnage: body.plannedTonnage === "" || body.plannedTonnage == null ? null : body.plannedTonnage,
             plannedStart: dateKeyToDate(body.plannedStart),
             plannedEnd: dateKeyToDate(body.plannedEnd),
             weldingNormKgPerMT: body.weldingNormKgPerMT ?? null,
@@ -42,7 +41,10 @@ export const POST = withAuth("job.manage", async ({ user, req, ip }) => {
             createdById: user.id,
           },
         });
-        await audit({ userId: user.id, siteId, action: "CREATE", entity: "Job", entityId: created.id, newValues: created, ip }, tx);
+        if (body.stages?.length) {
+          await tx.stage.createMany({ data: body.stages.map((st, i) => ({ ...st, sequence: i + 1, jobId: created.id, siteId })) });
+        }
+        await audit({ userId: user.id, siteId, action: "CREATE", entity: "Job", entityId: created.id, newValues: { ...created, stages: body.stages?.length ?? 0 }, ip }, tx);
         return created;
       });
       return ok({ id: job.id, jobNumber: job.jobNumber }, 201);

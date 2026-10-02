@@ -12,7 +12,7 @@ import { TRADE_LABELS } from "@/lib/labels";
 
 type WorkerRow = { id: string; code: string; name: string; trade: Trade };
 type Entry = { qtyDone: string; remark: string; workers: { workerId: string; hours: number; shift: Shift }[] };
-type StageRow = { id: string; name: string; unit: string; plannedQty: number; doneSoFar: number; done: boolean; entry: Entry | null };
+type StageRow = { id: string; name: string; unit: string; plannedQty: number; plannedDays: number; daysUsed: number; doneSoFar: number; done: boolean; entry: Entry | null };
 
 export function ProgressEditor({
   date,
@@ -43,10 +43,13 @@ export function ProgressEditor({
         ))}
       </div>
       <p className="rounded-xl bg-blue-50 p-3 text-sm text-blue-900">
-        <Bi en="Enter only how much work was done today. The app works out the progress — no percentages to guess." hi="सिर्फ़ आज कितना काम हुआ वह भरें। प्रतिशत ऐप खुद निकालेगा।" />
+        <Bi en="Each day: who worked on which stage, and tick a stage when it is finished. Nothing else to work out." hi="रोज़: किस स्टेज पर कौन लगा, और स्टेज पूरी हो तो टिक करें।" />
       </p>
       {stages.map((s) => {
-        const pct = s.done ? 100 : s.plannedQty > 0 ? Math.min(100, Math.round((s.doneSoFar / s.plannedQty) * 100)) : 0;
+        const byQty = s.plannedQty > 0 && s.doneSoFar > 0;
+        const started = s.daysUsed > 0;
+        const pct = s.done ? 100 : !started ? 0 : byQty ? Math.min(99, Math.round((s.doneSoFar / s.plannedQty) * 100)) : Math.min(99, Math.round((s.daysUsed / Math.max(1, s.plannedDays)) * 100));
+        const over = !s.done && s.daysUsed > s.plannedDays;
         return (
           <Card key={s.id}>
             <button className="flex w-full items-center justify-between gap-2" onClick={() => setOpen(open === s.id ? null : s.id)}>
@@ -54,12 +57,14 @@ export function ProgressEditor({
                 <div className="font-semibold">
                   {s.name} {s.done && <span className="text-green-600">✓</span>}
                 </div>
-                <div className="text-xs text-slate-500">
-                  {formatNum(s.doneSoFar)} / {formatNum(s.plannedQty)} {s.unit} done ({pct}%)
-                  {s.entry ? ` · today: ${s.entry.qtyDone} ${s.unit}, ${s.entry.workers.length} workers` : " · nothing entered today"}
+                <div className={`text-xs ${over ? "font-semibold text-red-600" : "text-slate-500"}`}>
+                  {started ? `Day ${s.daysUsed} of ${s.plannedDays}` : `${s.plannedDays} days planned · not started`}
+                  {over && ` · ${s.daysUsed - s.plannedDays} over`}
+                  {s.plannedQty > 0 && ` · ${formatNum(s.doneSoFar)} / ${formatNum(s.plannedQty)} ${s.unit}`}
+                  {s.entry ? ` · today: ${s.entry.workers.length} workers` : ""}
                 </div>
                 <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-slate-100">
-                  <div className={`h-full ${s.done ? "bg-green-600" : "bg-brand"}`} style={{ width: `${pct}%` }} />
+                  <div className={`h-full ${s.done ? "bg-green-600" : over ? "bg-red-500" : "bg-brand"}`} style={{ width: `${pct}%` }} />
                 </div>
               </div>
               <span className={`text-xl text-slate-400 transition ${open === s.id ? "rotate-90" : ""}`}>›</span>
@@ -101,15 +106,6 @@ function StageForm({ stage, date, workers, busyWorkers }: { stage: StageRow; dat
         );
       }}
     >
-      <Input
-        label={`Quantity done today (${stage.unit})`}
-        hi="आज कितना काम हुआ"
-        value={qty}
-        onChange={(e) => setQty(e.target.value)}
-        inputMode="decimal"
-        required
-        hint={`${formatNum(remaining)} ${stage.unit} left to reach the plan`}
-      />
       <Toggle
         label="This stage is finished"
         hi="यह स्टेज पूरी हो गई"
@@ -171,6 +167,16 @@ function StageForm({ stage, date, workers, busyWorkers }: { stage: StageRow; dat
           </div>
         )}
       </div>
+      {stage.plannedQty > 0 && (
+        <Input
+          label={`Quantity done today (${stage.unit}) — optional`}
+          hi="आज कितना हुआ"
+          value={qty}
+          onChange={(e) => setQty(e.target.value)}
+          inputMode="decimal"
+          hint={`${formatNum(remaining)} ${stage.unit} left of the plan`}
+        />
+      )}
       <Input label="Remark" hi="टिप्पणी" value={remark} onChange={(e) => setRemark(e.target.value)} />
       <Button type="submit" full loading={busy}>
         <Bi en="Save stage progress" hi="प्रगति सेव करें" />

@@ -82,6 +82,14 @@ export const siteSchema = z.object({
 export const jobStatusSchema = z.enum(["ACTIVE", "ON_HOLD", "COMPLETED", "CLOSED"]);
 export const unitSchema = z.enum(["MT", "NOS", "METRE", "SQM"]);
 
+export const stageSchema = z.object({
+  name: z.string().trim().min(2).max(60),
+  unit: unitSchema.default("MT"),
+  /** Optional. 0 means progress on this stage is tracked by time and the finished tick only. */
+  plannedQty: z.coerce.number().min(0).max(999999999).default(0),
+  plannedDays: z.coerce.number().int().positive("Must be at least 1").max(3650),
+});
+
 export const jobSchema = z
   .object({
     siteId: z.string().min(1),
@@ -89,25 +97,21 @@ export const jobSchema = z
     clientName: z.string().trim().min(2).max(120),
     description: z.string().trim().max(1000).optional().or(z.literal("")),
     drawingRef: z.string().trim().max(120).optional().or(z.literal("")),
-    plannedTonnage: z.union([z.coerce.number().min(0).max(999999), z.literal("")]).optional().nullable(),
     plannedStart: dateKey,
     plannedEnd: dateKey,
     weldingNormKgPerMT: z.coerce.number().min(0).max(1000).optional().nullable(),
     status: jobStatusSchema.default("ACTIVE"),
+    /** Written in the same go as the job, in order. */
+    stages: z.array(stageSchema).max(40).optional(),
   })
   .refine((v) => v.plannedEnd >= v.plannedStart, { message: "End date must be after start", path: ["plannedEnd"] });
 
-export const jobUpdateSchema = jobSchema.innerType().omit({ siteId: true }).partial().refine(
+export const jobUpdateSchema = jobSchema.innerType().omit({ siteId: true, stages: true }).partial().refine(
   (v) => !v.plannedStart || !v.plannedEnd || v.plannedEnd >= v.plannedStart,
   { message: "End date must be after start", path: ["plannedEnd"] },
 );
 
-export const stageSchema = z.object({
-  name: z.string().trim().min(2).max(60),
-  unit: unitSchema,
-  plannedQty: z.coerce.number().positive("Must be more than 0").max(999999999),
-  plannedDays: z.coerce.number().int().positive("Must be at least 1").max(3650),
-});
+
 
 export const stageReorderSchema = z.object({
   order: z.array(z.string().min(1)).min(1),

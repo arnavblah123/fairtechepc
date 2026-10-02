@@ -21,7 +21,6 @@ export default async function EditJobPage({ params }: { params: Promise<{ id: st
           clientName: job.clientName,
           description: job.description ?? "",
           drawingRef: job.drawingRef ?? "",
-          plannedTonnage: job.plannedTonnage ? String(Number(job.plannedTonnage)) : "",
           plannedStart: dateToKey(job.plannedStart),
           plannedEnd: dateToKey(job.plannedEnd),
           weldingNormKgPerMT: job.weldingNormKgPerMT ? String(Number(job.weldingNormKgPerMT)) : "",

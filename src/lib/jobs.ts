@@ -18,8 +18,10 @@ export type StageSummary = {
   plannedQty: number;
   plannedDays: number;
   actualQty: number;
-  /** Derived from quantity done — never typed in by anyone. */
+  /** Derived, never typed in. 100 only once the stage is ticked finished. */
   percent: number;
+  /** Which signal `percent` came from, so the UI can say so. */
+  basis: "DONE" | "QUANTITY" | "TIME" | "NONE";
   actualStart: string | null;
   actualEnd: string | null;
   daysUsed: number;
@@ -30,17 +32,17 @@ export type StageSummary = {
 /**
  * Stage-wise planned vs actual for one job.
  *
- * Progress is measured only by quantity completed against the stage's planned
- * quantity, or by the stage being marked finished. Nobody types a percentage,
- * and tonnage is not used as the yardstick. The job's overall figure weights
- * each stage by its planned days, so a 25-day welding stage counts for more
- * than a 6-day inspection.
+ * Time is the yardstick: every stage has planned days, and the supervisor marks
+ * when it is finished. Where a quantity was planned and entered, that gives a
+ * truer reading and is used instead. Either way a stage never reads 100% until
+ * it is ticked finished, and nobody types a percentage. The job's overall
+ * figure weights each stage by its planned days, so a 25-day welding stage
+ * counts for more than a 6-day inspection.
  */
 export async function jobStageSummary(jobId: string): Promise<{
   stages: StageSummary[];
   bottleneck: StageSummary | null;
   overallPercent: number;
-  plannedPercentToday: number;
 }> {
   const stages = await prisma.stage.findMany({
     where: { jobId, voidedAt: null },
@@ -55,9 +57,25 @@ export async function jobStageSummary(jobId: string): Promise<{
     const firstDate = s.progress.length ? dateToKey(s.progress[s.progress.length - 1].date) : null;
     const actualStart = s.actualStart ? dateToKey(s.actualStart) : firstDate;
     const actualEnd = s.actualEnd ? dateToKey(s.actualEnd) : null;
-    const percent = actualEnd ? 100 : plannedQty > 0 ? Math.min(100, (actualQty / plannedQty) * 100) : 0;
     const status: StageSummary["status"] = actualEnd ? "DONE" : actualStart ? "IN_PROGRESS" : "NOT_STARTED";
     const daysUsed = actualStart ? daysBetween(actualStart, actualEnd ?? today) + 1 : 0;
+
+    let percent = 0;
+    let basis: StageSummary["basis"] = "NONE";
+    if (status === "DONE") {
+      percent = 100;
+      basis = "DONE";
+    } else if (status === "IN_PROGRESS") {
+      if (plannedQty > 0 && actualQty > 0) {
+        percent = Math.min(99, (actualQty / plannedQty) * 100);
+        basis = "QUANTITY";
+      } else {
+        // No quantity to go on: how far through its planned days it is.
+        percent = Math.min(99, (daysUsed / Math.max(1, s.plannedDays)) * 100);
+        basis = "TIME";
+      }
+    }
+
     return {
       id: s.id,
       sequence: s.sequence,
@@ -67,6 +85,7 @@ export async function jobStageSummary(jobId: string): Promise<{
       plannedDays: s.plannedDays,
       actualQty,
       percent,
+      basis,
       actualStart,
       actualEnd,
       daysUsed,
@@ -75,14 +94,13 @@ export async function jobStageSummary(jobId: string): Promise<{
     };
   });
 
-  // Weight each stage by its planned days; stages with no plan fall back to equal weight.
   const totalWeight = out.reduce((a, s) => a + (s.plannedDays || 1), 0);
   const overallPercent = totalWeight ? Math.round(out.reduce((a, s) => a + s.percent * (s.plannedDays || 1), 0) / totalWeight) : 0;
 
   // A stage running over its planned days while unfinished is the bottleneck.
   const bottleneck = out.filter((s) => s.daysOverrun > 0 && s.status !== "DONE").sort((a, b) => b.daysOverrun - a.daysOverrun)[0] ?? null;
 
-  return { stages: out, bottleneck, overallPercent, plannedPercentToday: 0 };
+  return { stages: out, bottleneck, overallPercent };
 }
 
 /** Where the job should be today, by elapsed days against the planned window. */

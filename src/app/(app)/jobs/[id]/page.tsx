@@ -70,11 +70,11 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
                     <div className={`h-full ${tone}`} style={{ width: `${Math.min(100, s.percent)}%` }} />
                   </div>
                   <div className="mt-2 grid grid-cols-2 gap-x-3 text-xs text-slate-600">
-                    <div>Qty: <b>{formatNum(s.actualQty)}</b> / {formatNum(s.plannedQty)} {s.unit}</div>
                     <div className={s.daysOverrun > 0 ? "font-semibold text-red-600" : ""}>
                       Days: <b>{s.daysUsed}</b> / {s.plannedDays}
-                      {s.daysOverrun > 0 && ` (+${s.daysOverrun})`}
+                      {s.daysOverrun > 0 && ` (+${s.daysOverrun} over)`}
                     </div>
+                    <div>{s.plannedQty > 0 ? <>Qty: <b>{formatNum(s.actualQty)}</b> / {formatNum(s.plannedQty)} {s.unit}</> : <span className="text-slate-400">tracked by time</span>}</div>
                     <div className="col-span-2 text-slate-400">
                       {s.status === "NOT_STARTED" ? "Not started" : `${formatDate(s.actualStart)} → ${s.actualEnd ? formatDate(s.actualEnd) : "ongoing"}`}
                     </div>
@@ -109,12 +109,6 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
           <dd className="col-span-2">{job.drawingRef ?? "—"}</dd>
           <dt className="text-slate-500">Dates</dt>
           <dd className="col-span-2">{formatDate(job.plannedStart)} → {formatDate(job.plannedEnd)}</dd>
-          {job.plannedTonnage && (
-            <>
-              <dt className="text-slate-500">Tonnage</dt>
-              <dd className="col-span-2">{formatNum(job.plannedTonnage)} MT <span className="text-xs text-slate-400">(reference only)</span></dd>
-            </>
-          )}
           {isAdmin && (
             <>
               <dt className="text-slate-500">Welding norm</dt>
