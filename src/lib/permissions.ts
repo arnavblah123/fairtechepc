@@ -43,6 +43,7 @@ export const CAPABILITIES = {
   "consumable.dispatch": ["SUPERADMIN", "PURCHASE"],
   "consumable.receive": ["SITE_INCHARGE", "SUPERVISOR"], // inward + acceptance at site
   "item.manage": ["SUPERADMIN", "PURCHASE"],
+  "stock.adjust": ["SUPERADMIN"], // set stock on hand directly, with a reason
   // machines
   "machine.view": ["SUPERADMIN", "SITE_INCHARGE", "SUPERVISOR", "VIEWER"],
   "machine.dispatch": ["SUPERADMIN"],

@@ -8,6 +8,7 @@ import { Badge, Card, EmptyState } from "@/components/ui/Card";
 import { Bi } from "@/components/ui/Bi";
 import { formatNum, titleCase } from "@/lib/format";
 import { ExportLink } from "@/components/forms/ExportLink";
+import { StockAdjust } from "./StockAdjust";
 
 export default async function ConsumablesPage() {
   const user = await requirePage("consumable.view");
@@ -46,18 +47,22 @@ export default async function ConsumablesPage() {
           <Link href="/admin/items" className="rounded-xl border-2 border-slate-300 bg-white py-3 text-slate-700"><Bi en="Item master" hi="आइटम सूची" /></Link>
         )}
       </div>
+      {can(user.role, "stock.adjust") && (
+        <p className="mb-3 text-xs text-slate-500">Tap ✎ on any item to set its stock directly — for opening stock or after a physical count. Every change is logged with your reason.</p>
+      )}
       {[...byCat.entries()].map(([cat, list]) => (
         <Card key={cat} title={titleCase(cat)} className="mb-3">
           <ul className="divide-y text-sm">
             {list.map((s) => {
               const low = Number(s.qtyOnHand) <= Number(s.item.reorderLevel);
               return (
-                <li key={s.id} className="flex items-center justify-between py-2">
+                <li key={s.id} className="flex flex-wrap items-center justify-between gap-x-2 py-2">
                   <span className="min-w-0 flex-1 truncate">{s.item.name}</span>
                   <span className={`font-bold ${low ? "text-red-600" : ""}`}>
                     {formatNum(s.qtyOnHand)} {s.item.unit}
                   </span>
                   {low && <Badge tone="red">Low</Badge>}
+                  {can(user.role, "stock.adjust") && <StockAdjust siteId={site.id} itemId={s.itemId} name={s.item.name} unit={s.item.unit} current={Number(s.qtyOnHand)} />}
                 </li>
               );
             })}
