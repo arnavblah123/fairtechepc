@@ -22,6 +22,7 @@ export function ProgressEditor({
   stages,
   workers,
   busyWorkers,
+  compact = false,
 }: {
   date: string;
   today: string;
@@ -30,28 +31,41 @@ export function ProgressEditor({
   stages: StageRow[];
   workers: WorkerRow[];
   busyWorkers: Record<string, string>;
+  /** Embedded on the home page: no date switcher or hint, lighter cards. */
+  compact?: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
+  const nameOf = (id: string) => workers.find((w) => w.id === id)?.name.split(" ")[0] ?? "?";
+  // On the home page lead with what is happening now: stages in progress, or the
+  // next one to start if nothing is. The rest sit behind a toggle.
+  const live = stages.filter((st) => st.daysUsed > 0 && !st.done);
+  const lead = live.length ? live : stages.filter((st) => !st.done).slice(0, 1);
+  const visible = compact && !showAll ? lead : stages;
+  const hidden = stages.length - visible.length;
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between rounded-2xl bg-white p-2 shadow-sm">
+    <div className={compact ? "space-y-2" : "space-y-4"}>
+      {!compact && <div className="flex items-center justify-between rounded-2xl bg-white p-2 shadow-sm">
         {[yesterday, today].map((d) => (
           <button key={d} onClick={() => router.push(`/jobs/${jobId}/progress?date=${d}`)} className={`min-h-[44px] flex-1 rounded-xl font-semibold ${d === date ? "bg-brand text-white" : "text-slate-600"}`}>
             {d === today ? "Today / आज" : "Yesterday / कल"} · {formatDate(d).slice(0, 5)}
           </button>
         ))}
-      </div>
-      <p className="rounded-xl bg-blue-50 p-3 text-sm text-blue-900">
-        <Bi en="Each day: who worked on which stage, and tick a stage when it is finished. Nothing else to work out." hi="रोज़: किस स्टेज पर कौन लगा, और स्टेज पूरी हो तो टिक करें।" />
-      </p>
-      {stages.map((s) => {
+      </div>}
+      {!compact && (
+        <p className="rounded-xl bg-blue-50 p-3 text-sm text-blue-900">
+          <Bi en="Each day: who worked on which stage, and tick a stage when it is finished. Nothing else to work out." hi="रोज़: किस स्टेज पर कौन लगा, और स्टेज पूरी हो तो टिक करें।" />
+        </p>
+      )}
+      {visible.map((s) => {
         const byQty = s.plannedQty > 0 && s.doneSoFar > 0;
         const started = s.daysUsed > 0;
         const pct = s.done ? 100 : !started ? 0 : byQty ? Math.min(99, Math.round((s.doneSoFar / s.plannedQty) * 100)) : Math.min(99, Math.round((s.daysUsed / Math.max(1, s.plannedDays)) * 100));
         const over = !s.done && s.daysUsed > s.plannedDays;
+        const crew = s.entry?.workers ?? [];
         return (
-          <Card key={s.id}>
+          <Card key={s.id} className={compact ? "!p-3" : ""}>
             <button className="flex w-full items-center justify-between gap-2" onClick={() => setOpen(open === s.id ? null : s.id)}>
               <div className="min-w-0 text-left">
                 <div className="font-semibold">
@@ -61,8 +75,13 @@ export function ProgressEditor({
                   {started ? `Day ${s.daysUsed} of ${s.plannedDays}` : `${s.plannedDays} days planned · not started`}
                   {over && ` · ${s.daysUsed - s.plannedDays} over`}
                   {s.plannedQty > 0 && ` · ${formatNum(s.doneSoFar)} / ${formatNum(s.plannedQty)} ${s.unit}`}
-                  {s.entry ? ` · today: ${s.entry.workers.length} workers` : ""}
                 </div>
+                {/* who is on it today, by name — the thing a supervisor actually checks */}
+                {!s.done && (
+                  <div className={`mt-1 text-xs ${crew.length ? "text-slate-700" : "text-amber-700"}`}>
+                    {crew.length ? `👷 ${crew.map((w) => `${nameOf(w.workerId)} ${w.hours}h`).join(", ")} · ${crew.reduce((a, w) => a + w.hours, 0)}h total` : started ? "👷 nobody assigned today" : ""}
+                  </div>
+                )}
                 <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-slate-100">
                   <div className={`h-full ${s.done ? "bg-green-600" : over ? "bg-red-500" : "bg-brand"}`} style={{ width: `${pct}%` }} />
                 </div>
@@ -73,6 +92,11 @@ export function ProgressEditor({
           </Card>
         );
       })}
+      {compact && stages.length > lead.length && (
+        <button type="button" onClick={() => setShowAll(!showAll)} className="w-full py-1 text-center text-xs font-semibold text-brand">
+          {showAll ? "Show only active stages" : `Show all ${stages.length} stages (${hidden} hidden: ${stages.filter((st) => st.done).length} done, ${stages.filter((st) => st.daysUsed === 0 && !st.done).length} not started)`}
+        </button>
+      )}
     </div>
   );
 }

@@ -11,7 +11,8 @@ const schema = z.object({
   name: z.string().trim().min(2).max(80),
   username: usernameSchema,
   password: passwordSchema,
-  sampleData: z.boolean().default(true),
+  siteName: z.string().trim().min(2, "Give the site a name").max(80),
+  siteCity: z.string().trim().min(2, "Which city?").max(60),
 });
 
 /**
@@ -22,8 +23,8 @@ export async function POST(req: Request) {
   try {
     if ((await prisma.user.count()) > 0) return NextResponse.json({ error: "Setup already completed" }, { status: 403 });
     const body = await parseBody(req, schema);
-    const { admin } = await runSeed(prisma, { adminUsername: body.username, adminPassword: body.password, adminName: body.name, sampleData: body.sampleData });
-    await audit({ userId: admin.id, action: "CREATE", entity: "Setup", entityId: admin.id, newValues: { sampleData: body.sampleData } });
+    const { admin } = await runSeed(prisma, { adminUsername: body.username, adminPassword: body.password, adminName: body.name, site: { name: body.siteName, city: body.siteCity } });
+    await audit({ userId: admin.id, action: "CREATE", entity: "Setup", entityId: admin.id, newValues: { site: body.siteName, city: body.siteCity } });
     await createSession(admin.id);
     return NextResponse.json({ ok: true });
   } catch (e) {

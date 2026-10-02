@@ -77,6 +77,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
                     <div>{s.plannedQty > 0 ? <>Qty: <b>{formatNum(s.actualQty)}</b> / {formatNum(s.plannedQty)} {s.unit}</> : <span className="text-slate-400">tracked by time</span>}</div>
                     <div className="col-span-2 text-slate-400">
                       {s.status === "NOT_STARTED" ? "Not started" : `${formatDate(s.actualStart)} → ${s.actualEnd ? formatDate(s.actualEnd) : "ongoing"}`}
+                      {s.labourHours > 0 && <> · <b className="text-slate-600">{formatNum(s.labourHours, 1)} labour hours</b></>}
                     </div>
                   </div>
                 </li>

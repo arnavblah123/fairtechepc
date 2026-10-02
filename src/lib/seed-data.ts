@@ -1,36 +1,7 @@
 // Shared by prisma/seed.ts (CLI) and /api/setup (first-run page in the app).
 // No Next.js imports here.
-import type { PrismaClient, Trade, WageType, ConsumableCategory, QtyUnit } from "@prisma/client";
+import type { PrismaClient, ConsumableCategory } from "@prisma/client";
 import bcrypt from "bcryptjs";
-
-export const SAMPLE_STAGES: { name: string; unit: QtyUnit; plannedQty: number; plannedDays: number }[] = [
-  { name: "Marking", unit: "MT", plannedQty: 120, plannedDays: 10 },
-  { name: "Cutting", unit: "MT", plannedQty: 120, plannedDays: 12 },
-  { name: "Fit-up", unit: "MT", plannedQty: 120, plannedDays: 20 },
-  { name: "Welding", unit: "MT", plannedQty: 120, plannedDays: 25 },
-  { name: "Grinding", unit: "MT", plannedQty: 120, plannedDays: 10 },
-  { name: "Inspection", unit: "MT", plannedQty: 120, plannedDays: 6 },
-  { name: "Blasting/Painting", unit: "SQM", plannedQty: 2400, plannedDays: 12 },
-  { name: "Dispatch/Erection", unit: "MT", plannedQty: 120, plannedDays: 15 },
-];
-
-const WORKERS: { name: string; trade: Trade; wageType: WageType; rate: number; contractor?: string }[] = [
-  { name: "Ramesh Yadav", trade: "FITTER", wageType: "PER_DAY", rate: 750 },
-  { name: "Suresh Kumar", trade: "FITTER", wageType: "PER_DAY", rate: 750 },
-  { name: "Manoj Sharma", trade: "WELDER", wageType: "PER_DAY", rate: 850 },
-  { name: "Dinesh Prasad", trade: "WELDER", wageType: "PER_DAY", rate: 850 },
-  { name: "Rakesh Singh", trade: "WELDER", wageType: "PER_HOUR", rate: 110 },
-  { name: "Vinod Paswan", trade: "GRINDER", wageType: "PER_DAY", rate: 600 },
-  { name: "Santosh Mahto", trade: "GRINDER", wageType: "PER_DAY", rate: 600 },
-  { name: "Ajay Verma", trade: "GAS_CUTTER", wageType: "PER_DAY", rate: 700 },
-  { name: "Mukesh Rai", trade: "GAS_CUTTER", wageType: "PER_DAY", rate: 700 },
-  { name: "Sonu Kumar", trade: "HELPER", wageType: "PER_DAY", rate: 450, contractor: "Verma Labour Supply" },
-  { name: "Pappu Ram", trade: "HELPER", wageType: "PER_DAY", rate: 450, contractor: "Verma Labour Supply" },
-  { name: "Raju Das", trade: "HELPER", wageType: "PER_DAY", rate: 450, contractor: "Verma Labour Supply" },
-  { name: "Bablu Mandal", trade: "RIGGER", wageType: "PER_DAY", rate: 800 },
-  { name: "Anil Thakur", trade: "PAINTER", wageType: "PER_DAY", rate: 650 },
-  { name: "Ganesh Pawar", trade: "PAINTER", wageType: "PER_DAY", rate: 650 },
-];
 
 export const ITEM_MASTER: { name: string; category: ConsumableCategory; unit: string; reorder: number; welding?: boolean; kgPerUnit?: number }[] = [
   { name: "Electrode E6013 2.5mm", category: "WELDING_ELECTRODE", unit: "kg", reorder: 20, welding: true, kgPerUnit: 1 },
@@ -82,16 +53,12 @@ export const EXPENSE_CATEGORIES = [
   { slug: "miscellaneous", name: "Miscellaneous", requiresPerson: false, requiresMachine: false, sortOrder: 90 },
 ];
 
-function date(y: number, m: number, d: number) {
-  return new Date(Date.UTC(y, m - 1, d));
-}
-
 export type SeedOptions = {
   adminUsername: string;
   adminPassword: string;
   adminName?: string;
-  /** Create a sample site, job with 8 stages, 15 workers and sample site users. */
-  sampleData: boolean;
+  /** The one real site. Nothing sample is created. */
+  site: { name: string; city: string; code?: string };
   log?: (msg: string) => void;
 };
 
@@ -126,68 +93,11 @@ export async function runSeed(prisma: PrismaClient, opts: SeedOptions) {
   }
   log(`Expense categories: ${EXPENSE_CATEGORIES.length}`);
 
-  if (!opts.sampleData) return { admin };
-
-  const site = await prisma.site.upsert({
-    where: { code: "SITE" },
-    update: {},
-    create: { code: "SITE", name: "Fabrication Site 1", city: "Nagpur", address: "Plot 12, MIDC Industrial Area", pettyCashThreshold: 5000 },
-  });
-  log(`Site: ${site.name} (${site.code})`);
-
-  for (const u of [
-    { username: "incharge", name: "Site In-charge (sample)", role: "SITE_INCHARGE" as const },
-    { username: "supervisor", name: "Supervisor (sample)", role: "SUPERVISOR" as const },
-  ]) {
-    await prisma.user.upsert({ where: { username: u.username }, update: {}, create: { ...u, passwordHash: await bcrypt.hash("site123", 10), siteId: site.id } });
-  }
-  // The purchase desk sits in Pune and is not attached to a site.
-  await prisma.user.upsert({
-    where: { username: "purchase" },
-    update: {},
-    create: { username: "purchase", name: "Purchase (Pune)", role: "PURCHASE", passwordHash: await bcrypt.hash("site123", 10) },
-  });
-  log("Sample users: incharge / supervisor / purchase (password: site123)");
-
-  const jobNumber = `${site.code}-001`;
-  if (!(await prisma.job.findUnique({ where: { jobNumber } }))) {
-    await prisma.job.create({
-      data: {
-        siteId: site.id,
-        jobNumber,
-        name: "Boiler Support Structure",
-        clientName: "Sample Client Ltd",
-        description: "Fabrication of columns, beams and bracings for boiler support structure.",
-        drawingRef: "DWG-BSS-001 to 014",
-        plannedTonnage: 120, // reference only; progress is tracked stage by stage
-        plannedStart: date(2026, 9, 1),
-        plannedEnd: date(2026, 12, 15),
-        weldingNormKgPerMT: 12,
-        createdById: admin.id,
-        stages: { create: SAMPLE_STAGES.map((s, i) => ({ ...s, sequence: i + 1, siteId: site.id })) },
-      },
-    });
-    log(`Job: ${jobNumber} Boiler Support Structure with ${SAMPLE_STAGES.length} stages`);
-  }
-
-  let seq = 1;
-  for (const w of WORKERS) {
-    const code = `W-${String(seq++).padStart(3, "0")}`;
-    if (await prisma.worker.findUnique({ where: { siteId_code: { siteId: site.id, code } } })) continue;
-    await prisma.worker.create({
-      data: {
-        siteId: site.id,
-        code,
-        name: w.name,
-        trade: w.trade,
-        wageType: w.wageType,
-        contractorName: w.contractor,
-        joiningDate: date(2026, 9, 1),
-        wageRates: { create: { rate: w.rate, effectiveFrom: date(2026, 9, 1), setById: admin.id } },
-      },
-    });
-  }
-  log(`Workers: ${WORKERS.length}`);
+  // Site code is derived from the name (first letters, up to 4) unless given; it prefixes job numbers.
+  const code = (opts.site.code ?? opts.site.name.replace(/[^A-Za-z0-9 ]/g, "").split(/\s+/).map((w) => w[0]).join("").slice(0, 4).toUpperCase()) || "SITE";
+  const existing = await prisma.site.findFirst({ where: { active: true } });
+  const site = existing ?? (await prisma.site.create({ data: { code, name: opts.site.name, city: opts.site.city, pettyCashThreshold: 5000 } }));
+  log(`Site: ${site.name}, ${site.city} (${site.code})`);
 
   for (const it of ITEM_MASTER) {
     const item = await prisma.consumableItem.findUniqueOrThrow({ where: { name: it.name } });

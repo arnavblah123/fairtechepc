@@ -47,12 +47,13 @@ export function WagesBoard({ siteId, period, start, end, sheets }: { siteId: str
           <Card>
             <div className="overflow-x-auto">
               <table className="w-full whitespace-nowrap text-sm">
-                <thead><tr className="text-left text-xs text-slate-500"><th className="py-1">Worker</th><th className="text-right">Days</th><th className="text-right">OT</th><th className="text-right">Gross</th><th className="text-right">Adv</th><th className="text-right">Net</th><th></th></tr></thead>
+                <thead><tr className="text-left text-xs text-slate-500"><th className="py-1">Worker</th><th className="text-right">Days</th><th className="text-right">Hrs</th><th className="text-right">OT</th><th className="text-right">Gross</th><th className="text-right">Adv</th><th className="text-right">Net</th><th></th></tr></thead>
                 <tbody>
                   {sheets.map((s) => (
                     <tr key={s.id} className="border-t">
                       <td className="py-1.5">{s.code} {s.name}</td>
                       <td className="text-right">{s.daysPresent}</td>
+                      <td className="text-right">{s.hours}</td>
                       <td className="text-right">{s.otHours}</td>
                       <td className="text-right">{formatINR(s.gross)}</td>
                       <td className="text-right text-red-600">{s.advances ? formatINR(s.advances) : "—"}</td>
@@ -71,7 +72,7 @@ export function WagesBoard({ siteId, period, start, end, sheets }: { siteId: str
                 </tbody>
               </table>
             </div>
-            <p className="mt-2 text-xs text-slate-500">Finalized/paid sheets are not touched by re-generate. Only you can see this screen.</p>
+            <p className="mt-2 text-xs text-slate-500">Hours are what the supervisor logged on stages each day. Finalized/paid sheets are not touched by re-generate. Only you can see this screen.</p>
           </Card>
         </>
       )}

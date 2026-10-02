@@ -4,7 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { assertSiteAccess } from "@/lib/site";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ProgressEditor } from "./ProgressEditor";
-import { istDateKey, addDays, dateKeyToDate, dateToKey, daysBetween } from "@/lib/format";
+import { istDateKey, addDays } from "@/lib/format";
+import { siteWorkersForDate, stageRowsForJob } from "@/lib/progress-board";
 
 export default async function ProgressPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ date?: string }> }) {
   const user = await requirePage("stage.progress");
@@ -12,55 +13,18 @@ export default async function ProgressPage({ params, searchParams }: { params: P
   const sp = await searchParams;
   const today = istDateKey();
   const date = /^\d{4}-\d{2}-\d{2}$/.test(sp.date ?? "") ? sp.date! : today;
-  const job = await prisma.job.findFirst({
-    where: { id, voidedAt: null },
-    include: { stages: { where: { voidedAt: null }, orderBy: { sequence: "asc" } } },
-  });
+  const job = await prisma.job.findFirst({ where: { id, voidedAt: null }, select: { id: true, jobNumber: true, siteId: true } });
   if (!job) notFound();
   try {
     assertSiteAccess(user, job.siteId);
   } catch {
     notFound();
   }
-  const dateObj = dateKeyToDate(date);
-  const [todaysProgress, allProgress, workers, todaysLogs] = await Promise.all([
-    prisma.stageProgress.findMany({ where: { jobId: job.id, date: dateObj, voidedAt: null }, include: { workLogs: true } }),
-    prisma.stageProgress.groupBy({ by: ["stageId"], where: { jobId: job.id, voidedAt: null }, _sum: { qtyDone: true } }),
-    prisma.worker.findMany({ where: { siteId: job.siteId, active: true }, orderBy: { code: "asc" }, select: { id: true, code: true, name: true, trade: true } }),
-    prisma.stageWorkLog.findMany({
-      where: { date: dateObj, worker: { siteId: job.siteId } },
-      include: { stageProgress: { include: { stage: { select: { id: true, name: true } } } } },
-    }),
-  ]);
-  const cumulative = new Map(allProgress.map((p) => [p.stageId, Number(p._sum.qtyDone ?? 0)]));
-
+  const [stages, { workers, busyWorkers }] = await Promise.all([stageRowsForJob(job.id, date, today), siteWorkersForDate(job.siteId, date)]);
   return (
     <div>
       <PageHeader title={`${job.jobNumber} progress`} hi="स्टेज प्रगति" back={`/jobs/${job.id}`} />
-      <ProgressEditor
-        date={date}
-        today={today}
-        yesterday={addDays(today, -1)}
-        jobId={job.id}
-        stages={job.stages.map((s) => {
-          const p = todaysProgress.find((x) => x.stageId === s.id);
-          return {
-            id: s.id,
-            name: `${s.sequence}. ${s.name}`,
-            unit: s.unit,
-            plannedQty: Number(s.plannedQty),
-            plannedDays: s.plannedDays,
-            daysUsed: s.actualStart ? daysBetween(dateToKey(s.actualStart), s.actualEnd ? dateToKey(s.actualEnd) : today) + 1 : 0,
-            doneSoFar: cumulative.get(s.id) ?? 0,
-            done: !!s.actualEnd,
-            entry: p
-              ? { qtyDone: String(Number(p.qtyDone)), remark: p.remark ?? "", workers: p.workLogs.map((w) => ({ workerId: w.workerId, hours: Number(w.hours), shift: w.shift })) }
-              : null,
-          };
-        })}
-        workers={workers}
-        busyWorkers={Object.fromEntries(todaysLogs.map((l) => [`${l.workerId}:${l.shift}`, l.stageProgress.stage.name]))}
-      />
+      <ProgressEditor date={date} today={today} yesterday={addDays(today, -1)} jobId={job.id} stages={stages} workers={workers} busyWorkers={busyWorkers} />
     </div>
   );
 }

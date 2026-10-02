@@ -18,6 +18,8 @@ export type StageSummary = {
   plannedQty: number;
   plannedDays: number;
   actualQty: number;
+  /** Total worker hours logged on this stage — the basis for labour cost. */
+  labourHours: number;
   /** Derived, never typed in. 100 only once the stage is ticked finished. */
   percent: number;
   /** Which signal `percent` came from, so the UI can say so. */
@@ -47,12 +49,13 @@ export async function jobStageSummary(jobId: string): Promise<{
   const stages = await prisma.stage.findMany({
     where: { jobId, voidedAt: null },
     orderBy: { sequence: "asc" },
-    include: { progress: { where: { voidedAt: null }, orderBy: { date: "desc" }, select: { date: true, qtyDone: true } } },
+    include: { progress: { where: { voidedAt: null }, orderBy: { date: "desc" }, select: { date: true, qtyDone: true, workLogs: { select: { hours: true } } } } },
   });
   const today = istDateKey();
 
   const out: StageSummary[] = stages.map((s) => {
     const actualQty = s.progress.reduce((a, p) => a + Number(p.qtyDone), 0);
+    const labourHours = s.progress.reduce((a, p) => a + p.workLogs.reduce((b, w) => b + Number(w.hours), 0), 0);
     const plannedQty = Number(s.plannedQty);
     const firstDate = s.progress.length ? dateToKey(s.progress[s.progress.length - 1].date) : null;
     const actualStart = s.actualStart ? dateToKey(s.actualStart) : firstDate;
@@ -84,6 +87,7 @@ export async function jobStageSummary(jobId: string): Promise<{
       plannedQty,
       plannedDays: s.plannedDays,
       actualQty,
+      labourHours,
       percent,
       basis,
       actualStart,

@@ -7,7 +7,7 @@ const prisma = new PrismaClient();
 runSeed(prisma, {
   adminUsername: process.env.SEED_ADMIN_USERNAME ?? "arnav",
   adminPassword: process.env.SEED_ADMIN_PASSWORD ?? "ChangeMe@123",
-  sampleData: process.env.SEED_SAMPLE_DATA !== "false",
+  site: { name: process.env.SEED_SITE_NAME ?? "Main Site", city: process.env.SEED_SITE_CITY ?? "" },
   log: console.log,
 })
   .then(() => prisma.$disconnect())

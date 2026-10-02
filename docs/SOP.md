@@ -11,9 +11,9 @@ Open the app from the home-screen icon. Login once; it stays logged in.
 | **8:30 AM** | Submit the **Daily Plan**: per job, per stage, target quantity and manpower for today. <br>**दैनिक योजना** भरें: हर काम, हर स्टेज का आज का लक्ष्य और मज़दूर। | Daily plan / दैनिक योजना |
 | **8–10 AM** | **Photo 1** of work in progress. <br>काम की **फोटो 1**। | Photos / फोटो |
 | **10–12** | **Photo 2**. Enter any **consumables issued** (electrodes, wheels, gas) against the job. <br>**फोटो 2**। जो **सामान निकला** (इलेक्ट्रोड, व्हील, गैस) वह काम के नाम पर भरें। | Photos · Consumables |
-| **12–2 PM** | **Photo 3**. Assign workers to stages and enter hours. <br>**फोटो 3**। मज़दूरों को स्टेज पर लगाएँ, घंटे भरें। | Photos · Jobs |
+| **12–2 PM** | **Photo 3**. On the home screen, under **Stages today**, put each worker on the stage they are working and enter their **hours** — this is what their wages are paid on. <br>**फोटो 3**। होम स्क्रीन पर **आज की स्टेज** में हर मज़दूर को उसकी स्टेज पर लगाएँ और **घंटे** भरें — इसी से मज़दूरी बनती है। | Home |
 | **2–4 PM** | **Photo 4**. Raise an **Issue** the moment work stops or material is short. <br>**फोटो 4**। काम रुके या सामान कम हो तो तुरंत **समस्या** दर्ज करें। | Photos · Issues |
-| **4–6 PM** | **Photo 5**. Enter **stage progress**: only the quantity done today (the app works out the percentage). Tick "stage finished" when a stage is complete. Enter out-time and OT. <br>**फोटो 5**। **स्टेज प्रगति** भरें: सिर्फ़ आज कितना काम हुआ। स्टेज पूरी हो तो टिक करें। आउट-टाइम और ओटी भरें। | Photos · Jobs · Attendance |
+| **4–6 PM** | **Photo 5**. Check every worker's hours are right for the day. Tick "stage finished" when a stage is complete. Enter out-time and OT. <br>**फोटो 5**। हर मज़दूर के घंटे सही हैं यह देखें। स्टेज पूरी हो तो टिक करें। आउट-टाइम और ओटी भरें। | Home · Attendance |
 | **Before 8:00 PM** | Open **DPR**, check the auto-filled report, add a short remark, **Submit**. <br>**डीपीआर** खोलें, रिपोर्ट देखें, छोटी टिप्पणी लिखें, **सबमिट** करें। | DPR / डीपीआर |
 
 ## Rules / नियम

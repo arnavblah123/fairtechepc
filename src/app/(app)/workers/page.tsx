@@ -9,6 +9,7 @@ import { LinkButton } from "@/components/ui/Button";
 import { Bi } from "@/components/ui/Bi";
 import { TRADE_LABELS } from "@/lib/labels";
 import { ExportLink } from "@/components/forms/ExportLink";
+import { ClearWorkersButton } from "./ClearWorkersButton";
 
 export default async function WorkersPage() {
   const user = await requirePage("worker.view");
@@ -72,7 +73,8 @@ export default async function WorkersPage() {
             </ul>
           </Card>
         )}
-        {workers.length === 0 && <EmptyState en="No workers yet." hi="अभी कोई मज़दूर नहीं।" />}
+        {workers.length === 0 && <EmptyState en="No workers yet. Add your labour from the button above." hi="अभी कोई मज़दूर नहीं। ऊपर के बटन से जोड़ें।" />}
+        {can(user.role, "record.delete") && <ClearWorkersButton siteId={site.id} count={workers.filter((w) => w.active).length} />}
       </div>
     </div>
   );

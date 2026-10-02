@@ -64,13 +64,11 @@ progress cannot be deleted on its own, and the last superadmin cannot be removed
 
 ## Logins
 
-On a fresh deployment the app shows a one-time **Setup** page where you create your own superadmin login. If you tick "Add sample data" you also get:
-
-| Username | Password | Role |
-| --- | --- | --- |
-| `incharge` | `site123` | Site In-charge (sample) |
-| `supervisor` | `site123` | Supervisor (sample) |
-| `purchase` | `site123` | Purchase desk, Pune (sample) |
+On a fresh deployment the app shows a one-time **Setup** page: your name,
+username and password, and your site's name and city. That is the only account
+it creates. Add the site in-charge, supervisors and the purchase desk from
+**More → Users**, and labour from **More → Labour master**. No sample names
+are seeded; the consumable item master and expense categories are.
 
 Superadmin can reset anyone's password from **More → Users**. Everyone can change their own from **More → Change password**.
 
@@ -150,7 +148,7 @@ npm run db:seed               # optional: superadmin + sample data from SEED_* v
 npm run dev                   # open http://localhost:3000 (shows /setup if you skipped the seed)
 ```
 
-Set `SEED_SAMPLE_DATA=false` to seed only the superadmin and item master.
+`SEED_SITE_NAME` and `SEED_SITE_CITY` name the site when seeding from the CLI; the `/setup` page asks for them instead.
 
 ---
 

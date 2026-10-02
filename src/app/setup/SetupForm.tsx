@@ -9,7 +9,8 @@ export function SetupForm() {
   const [username, setUsername] = useState("arnav");
   const [password, setPassword] = useState("");
   const [again, setAgain] = useState("");
-  const [sampleData, setSampleData] = useState(true);
+  const [siteName, setSiteName] = useState("");
+  const [siteCity, setSiteCity] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const mismatch = again.length > 0 && password !== again;
@@ -23,7 +24,7 @@ export function SetupForm() {
         setBusy(true);
         setError(null);
         try {
-          await api("/api/setup", { body: { name, username, password, sampleData } });
+          await api("/api/setup", { body: { name, username, password, siteName, siteCity } });
           window.location.href = "/";
         } catch (err) {
           setError(err instanceof Error ? err.message : "Setup failed");
@@ -35,12 +36,12 @@ export function SetupForm() {
       <Input label="Username" value={username} onChange={(e) => setUsername(e.target.value.toLowerCase())} autoCapitalize="none" required hint="Lowercase letters and numbers" />
       <Input label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} autoComplete="new-password" />
       <Input label="Repeat password" type="password" value={again} onChange={(e) => setAgain(e.target.value)} required error={mismatch ? "Passwords do not match" : undefined} autoComplete="new-password" />
-      <label className="flex items-start gap-3 rounded-xl bg-blue-50 p-3 text-sm">
-        <input type="checkbox" className="mt-0.5 h-5 w-5" checked={sampleData} onChange={(e) => setSampleData(e.target.checked)} />
-        <span>
-          Add sample data to explore: one site, a job with 8 stages, 15 workers, and two test logins (<b>incharge</b> / <b>supervisor</b>, password <b>site123</b>). The consumable item master is always added.
-        </span>
-      </label>
+      <div className="space-y-3 rounded-xl bg-blue-50 p-3">
+        <p className="text-sm font-semibold text-blue-900">Your site</p>
+        <Input label="Site name" value={siteName} onChange={(e) => setSiteName(e.target.value)} required placeholder="e.g. Jamshedpur Fabrication Yard" />
+        <Input label="City" value={siteCity} onChange={(e) => setSiteCity(e.target.value)} required />
+        <p className="text-xs text-blue-900/70">Job numbers take their prefix from the site name. You can rename the site later.</p>
+      </div>
       {error && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
       <Button type="submit" size="lg" full loading={busy} disabled={mismatch}>
         Create account and start

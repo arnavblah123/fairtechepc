@@ -9,6 +9,8 @@ import { LinkButton } from "@/components/ui/Button";
 import { formatDate, formatINR, formatNum, istDateKey, dateKeyToDate, dateToKey, titleCase } from "@/lib/format";
 import { siteDashboard } from "@/lib/dashboard";
 import { balanceOf, pendingSpendOf } from "@/lib/ledger";
+import { siteWorkersForDate, stageRowsForJob } from "@/lib/progress-board";
+import { ProgressEditor } from "./jobs/[id]/progress/ProgressEditor";
 import { ProgressChart } from "@/components/dashboard/ProgressChart";
 import { ApprovalRow } from "@/components/dashboard/ApprovalRow";
 import { PHOTO_SLOTS } from "@/lib/slots";
@@ -116,11 +118,22 @@ async function SiteHome() {
   const filled = new Set(slots.map((s) => s.slot));
   const canMark = can(user.role, "attendance.mark");
   const [myBalance, myPending] = await Promise.all([balanceOf(user.id), pendingSpendOf(user.id)]);
+
+  // Stage tracking lives on the home page: every active job, every stage, today's crew.
+  const canTrack = can(user.role, "stage.progress");
+  const activeJobs = canTrack
+    ? await prisma.job.findMany({ where: { siteId: site.id, voidedAt: null, status: "ACTIVE" }, orderBy: { jobNumber: "asc" }, select: { id: true, jobNumber: true, name: true } })
+    : [];
+  const crew = canTrack ? await siteWorkersForDate(site.id, today) : null;
+  const boards = canTrack ? await Promise.all(activeJobs.map(async (j) => ({ job: j, stages: await stageRowsForJob(j.id, today, today) }))) : [];
+  const presentIds = new Set(
+    (await prisma.attendance.findMany({ where: { siteId: site.id, date: dateObj, status: { in: ["PRESENT", "HALF_DAY"] } }, select: { workerId: true } })).map((a) => a.workerId),
+  );
+  const unassigned = crew ? [...presentIds].filter((id) => !crew.assignedWorkerIds.has(id)).length : 0;
   const steps: { href: string; en: string; hi: string; done: boolean }[] = [
     { href: "/attendance", en: "Muster photo + attendance", hi: "मस्टर फोटो और हाज़िरी", done: muster > 0 && present > 0 },
     { href: "/plan", en: "Daily plan", hi: "दैनिक योजना", done: !!plan },
     { href: "/photos", en: `Site photos (${filled.size}/5)`, hi: "साइट फोटो", done: filled.size >= 5 },
-    { href: "/jobs", en: "Stage progress", hi: "स्टेज प्रगति", done: false },
     ...(can(user.role, "dpr.submit") ? [{ href: "/dpr", en: "Submit DPR before 8 PM", hi: "8 बजे से पहले डीपीआर", done: dpr?.status === "SUBMITTED" }] : []),
   ];
   return (
@@ -187,6 +200,37 @@ async function SiteHome() {
           </Link>
         </div>
       </Card>
+      {canTrack && crew && (
+        <section className="space-y-3">
+          <div>
+            <h2 className="text-base font-bold text-slate-800">
+              <Bi en="Stages today" hi="आज की स्टेज" inline />
+            </h2>
+            <p className={`text-xs font-semibold ${unassigned > 0 ? "text-amber-700" : "text-slate-500"}`}>
+              {present} present · {crew.assignedWorkerIds.size} on stages{unassigned > 0 ? ` · ${unassigned} not assigned to any stage` : ""}
+            </p>
+          </div>
+          {boards.length === 0 ? (
+            <Card><p className="text-sm text-slate-500">No active jobs yet.</p></Card>
+          ) : (
+            boards.map(({ job, stages }) => (
+              <div key={job.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-2">
+                <Link href={`/jobs/${job.id}`} className="mb-2 flex items-center justify-between px-1">
+                  <span className="font-bold">{job.jobNumber} · {job.name}</span>
+                  <span className="text-xs font-semibold text-brand">
+                    {stages.filter((st) => st.done).length}/{stages.length} done ›
+                  </span>
+                </Link>
+                {stages.length === 0 ? (
+                  <p className="px-1 pb-1 text-xs text-slate-500">No stages written for this job yet.</p>
+                ) : (
+                  <ProgressEditor compact date={today} today={today} yesterday={today} jobId={job.id} stages={stages} workers={crew.workers} busyWorkers={crew.busyWorkers} />
+                )}
+              </div>
+            ))
+          )}
+        </section>
+      )}
       {canMark && (
         <Card title="Today's routine" hi="आज का काम">
           <ul className="divide-y">

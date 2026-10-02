@@ -25,6 +25,8 @@ export async function generateWageSheets(siteId: string, period: WagePeriod, sta
     include: {
       wageRates: { where: { effectiveFrom: { lte: end } }, orderBy: { effectiveFrom: "desc" }, take: 1 },
       attendance: { where: { date: { gte: start, lte: end } } },
+      // Hours worked come from the stage assignments: who was on which stage, for how long.
+      workLogs: { where: { date: { gte: start, lte: end }, stageProgress: { voidedAt: null } }, select: { hours: true } },
     },
   });
   const results: { workerId: string; skipped?: string }[] = [];
@@ -38,12 +40,15 @@ export async function generateWageSheets(siteId: string, period: WagePeriod, sta
     const rate = rateRow ? Number(rateRow.rate) : 0;
     const hourly = w.wageType === "PER_HOUR" ? rate : rate / 8;
     const otRate = rateRow?.otRate ? Number(rateRow.otRate) : hourly * 1.5;
-    let daysPresent = 0, hours = 0, otHours = 0;
+    let daysPresent = 0, attendanceHours = 0, otHours = 0;
     for (const a of w.attendance) {
-      if (a.status === "PRESENT") { daysPresent += 1; hours += hoursOf(a.inTime, a.outTime) ?? 8; }
-      else if (a.status === "HALF_DAY") { daysPresent += 0.5; hours += hoursOf(a.inTime, a.outTime) ?? 4; }
+      if (a.status === "PRESENT") { daysPresent += 1; attendanceHours += hoursOf(a.inTime, a.outTime) ?? 8; }
+      else if (a.status === "HALF_DAY") { daysPresent += 0.5; attendanceHours += hoursOf(a.inTime, a.outTime) ?? 4; }
       otHours += Number(a.otHours);
     }
+    // Stage hours are the payable record; attendance hours only fill in when nothing was logged on stages.
+    const stageHours = w.workLogs.reduce((a, l) => a + Number(l.hours), 0);
+    const hours = stageHours > 0 ? stageHours : attendanceHours;
     const gross = w.wageType === "PER_DAY" ? rate * daysPresent + otRate * otHours : rate * hours + otRate * otHours;
     await prisma.$transaction(async (tx) => {
       if (existing) await tx.advance.updateMany({ where: { wageSheetId: existing.id }, data: { wageSheetId: null } });

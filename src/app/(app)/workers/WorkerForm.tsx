@@ -24,7 +24,7 @@ export type WorkerFormData = {
 
 export function WorkerForm({ siteId, worker }: { siteId: string; worker?: WorkerFormData }) {
   const [f, setF] = useState<WorkerFormData>(
-    worker ?? { name: "", phone: "", trade: "HELPER", joiningDate: new Date().toISOString().slice(0, 10), wageType: "PER_DAY", contractorName: "", idDocRef: "", photoUrl: "", active: true },
+    worker ?? { name: "", phone: "", trade: "HELPER", joiningDate: new Date().toISOString().slice(0, 10), wageType: "PER_HOUR", contractorName: "", idDocRef: "", photoUrl: "", active: true },
   );
   const { busy, submit } = useSubmit();
   const set = (k: keyof WorkerFormData) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setF({ ...f, [k]: e.target.value });
@@ -52,8 +52,8 @@ export function WorkerForm({ siteId, worker }: { siteId: string; worker?: Worker
         <div className="grid grid-cols-2 gap-3">
           <Input label="Joining date" hi="तारीख़" type="date" value={f.joiningDate} onChange={set("joiningDate")} required />
           <Select label="Wage type" hi="मज़दूरी" value={f.wageType} onChange={set("wageType")}>
-            <option value="PER_DAY">Per day / रोज़</option>
             <option value="PER_HOUR">Per hour / घंटा</option>
+            <option value="PER_DAY">Per day / रोज़</option>
           </Select>
         </div>
         <Input label="Contractor (if sub-contract)" hi="ठेकेदार" value={f.contractorName} onChange={set("contractorName")} />
