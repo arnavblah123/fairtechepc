@@ -62,6 +62,7 @@ model User {
   consRequestsRaised     ConsumableRequest[]       @relation("ConsReqRequestedBy")
   consRequestsOrdered    ConsumableRequest[]       @relation("ConsReqOrderedBy")
   jobMaterialsAdded      JobMaterial[]
+  itemsProposed          ConsumableItem[]          @relation("ItemProposedBy")
   expensesSpent          Expense[]                 @relation("ExpenseSpentBy")
   expensesEntered        Expense[]                 @relation("ExpenseEnteredBy")
   expensesDecided        Expense[]                 @relation("ExpenseDecidedBy")
@@ -904,6 +905,10 @@ model ConsumableItem {
   isWeldingConsumable Boolean            @default(false) // counted in kg-per-MT norm check
   kgPerUnit           Decimal?           @db.Decimal(10, 4) // conversion for norm check when unit != kg
   active              Boolean            @default(true)
+  /// False when a site user added it while ordering: usable at once, but flagged for the superadmin.
+  approved            Boolean            @default(true)
+  proposedById        String?
+  proposedBy          User?              @relation("ItemProposedBy", fields: [proposedById], references: [id])
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
 

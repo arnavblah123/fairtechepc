@@ -39,6 +39,7 @@ export default async function ConsRequestsPage({ searchParams }: { searchParams:
         canShip={can(user.role, "consumable.dispatch")}
         canClose={can(user.role, "consumable.receive")}
         canDelete={can(user.role, "record.delete")}
+        canPropose={can(user.role, "item.propose")}
         items={items}
         requests={requests.map((r) => ({
           id: r.id,

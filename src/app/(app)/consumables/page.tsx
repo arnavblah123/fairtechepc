@@ -9,6 +9,7 @@ import { Bi } from "@/components/ui/Bi";
 import { formatNum, titleCase } from "@/lib/format";
 import { ExportLink } from "@/components/forms/ExportLink";
 import { StockAdjust } from "./StockAdjust";
+import { AddItemInline } from "./AddItemInline";
 
 export default async function ConsumablesPage() {
   const user = await requirePage("consumable.view");
@@ -47,6 +48,7 @@ export default async function ConsumablesPage() {
           <Link href="/admin/items" className="rounded-xl border-2 border-slate-300 bg-white py-3 text-slate-700"><Bi en="Item master" hi="आइटम सूची" /></Link>
         )}
       </div>
+      {can(user.role, "item.manage") && <AddItemInline />}
       {can(user.role, "stock.adjust") && (
         <p className="mb-3 text-xs text-slate-500">Tap ✎ on any item to set its stock directly — for opening stock or after a physical count. Every change is logged with your reason.</p>
       )}
@@ -62,6 +64,7 @@ export default async function ConsumablesPage() {
                     {formatNum(s.qtyOnHand)} {s.item.unit}
                   </span>
                   {low && <Badge tone="red">Low</Badge>}
+                  {!s.item.approved && <Badge tone="amber">awaiting OK</Badge>}
                   {can(user.role, "stock.adjust") && <StockAdjust siteId={site.id} itemId={s.itemId} name={s.item.name} unit={s.item.unit} current={Number(s.qtyOnHand)} />}
                 </li>
               );

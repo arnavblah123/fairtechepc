@@ -264,7 +264,7 @@ async function AdminDashboard() {
     );
   }
   const d = await siteDashboard(site.id);
-  const pendingCount = d.pendingCons.length + d.pendingPetty.length + d.pendingAdv.length + d.pendingExpenses.length;
+  const pendingCount = d.pendingCons.length + d.pendingPetty.length + d.pendingAdv.length + d.pendingExpenses.length + d.pendingItems.length;
   const workStopped = d.openIssues.filter((i) => i.severity === "WORK_STOPPED");
 
   return (
@@ -334,6 +334,9 @@ async function AdminDashboard() {
             ))}
             {d.pendingAdv.map((r) => (
               <ApprovalRow key={r.id} endpoint={`/api/advances/${r.id}/decide`} label={<>🧾 Advance: {formatINR(r.amount)}</>} sub={r.sub} />
+            ))}
+            {d.pendingItems.map((r) => (
+              <ApprovalRow key={r.id} endpoint={`/api/items/${r.id}/decide`} label={<>🆕 New item: {r.name} ({r.unit})</>} sub={`added by ${r.by} while ordering`} extraApprove={[{ label: "✓ Keep in master", body: { decision: "APPROVED" } }]} />
             ))}
             {d.pendingExpenses.map((r) => (
               <ApprovalRow key={r.id} endpoint={`/api/expenses/${r.id}/decide`} label={<>🧾 {formatINR(r.amount)} — {r.label}</>} sub={r.sub} />

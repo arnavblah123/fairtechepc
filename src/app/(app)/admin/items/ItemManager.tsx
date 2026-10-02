@@ -8,9 +8,9 @@ import { Badge, Card } from "@/components/ui/Card";
 import { titleCase } from "@/lib/format";
 import { DeleteButton } from "@/components/forms/DeleteButton";
 
-type Item = { id?: string; name: string; category: ConsumableCategory; unit: string; reorderLevel: number; isWeldingConsumable: boolean; kgPerUnit: number | null; active: boolean };
+type Item = { id?: string; name: string; category: ConsumableCategory; unit: string; reorderLevel: number; isWeldingConsumable: boolean; kgPerUnit: number | null; active: boolean; approved?: boolean };
 const CATEGORIES: ConsumableCategory[] = ["WELDING_ELECTRODE", "MIG_WIRE", "GAS", "GRINDING", "CUTTING", "HAND_TOOL", "PPE_SAFETY", "PAINT", "HARDWARE", "OTHER"];
-const BLANK: Item = { name: "", category: "OTHER", unit: "nos", reorderLevel: 0, isWeldingConsumable: false, kgPerUnit: null, active: true };
+const BLANK: Item = { name: "", category: "OTHER", unit: "nos", reorderLevel: 0, isWeldingConsumable: false, kgPerUnit: null, active: true, approved: true };
 
 export function ItemManager({ items }: { items: Item[] }) {
   const [editing, setEditing] = useState<Item | null>(null);
@@ -56,6 +56,13 @@ export function ItemManager({ items }: { items: Item[] }) {
                 <div className="text-xs text-slate-500">{titleCase(i.category)} · {i.unit} · reorder at {i.reorderLevel}{i.isWeldingConsumable ? ` · welding (${i.kgPerUnit ?? 1} kg/unit)` : ""}</div>
               </div>
               <div className="flex items-center gap-2">
+                {i.id && i.active && i.approved === false && (
+                  <>
+                    <Badge tone="amber">site added</Badge>
+                    <button className="min-h-[40px] rounded-lg bg-green-600 px-2 text-xs font-semibold text-white" disabled={busy} onClick={() => submit(() => api(`/api/items/${i.id}/decide`, { body: { decision: "APPROVED" } }))}>✓ Keep</button>
+                    <button className="min-h-[40px] rounded-lg bg-red-600 px-2 text-xs font-semibold text-white" disabled={busy} onClick={() => { const note = window.prompt("Why reject this item?") ?? ""; if (note.trim()) submit(() => api(`/api/items/${i.id}/decide`, { body: { decision: "REJECTED", note } })); }}>✕</button>
+                  </>
+                )}
                 {i.isWeldingConsumable && <Badge tone="blue">norm</Badge>}
                 <button className="min-h-[40px] rounded-lg border-2 border-slate-300 px-3 font-semibold" onClick={() => setEditing(i)}>Edit</button>
                 {i.id && i.active && <DeleteButton entity="ConsumableItem" id={i.id} what={i.name} icon />}

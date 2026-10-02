@@ -53,6 +53,11 @@ export async function siteDashboard(siteId: string) {
     .sort((a, b) => b.amount - a.amount);
   const monthTotal = toRupees(monthSpend.reduce((a, e) => a + toPaise(e.amount), 0));
   const cashOnStreet = cashHolders.reduce((a, b) => a + b.inHand, 0);
+  const pendingItems = await prisma.consumableItem.findMany({
+    where: { approved: false, active: true },
+    orderBy: { createdAt: "asc" },
+    include: { proposedBy: { select: { name: true } } },
+  });
 
   // DPR missing = yesterday was a working day with no submitted DPR (or today's, after cutoff).
   const dprMissingYesterday = !holidayY && dprY?.status !== "SUBMITTED";
@@ -113,6 +118,7 @@ export async function siteDashboard(siteId: string) {
     lowItems,
     pendingCons: pendingCons.map((r) => ({ id: r.id, label: `${r.item.name} × ${Number(r.qty)} ${r.item.unit}`, sub: `${r.reason} — ${r.requestedBy.name}` })),
     pendingPetty: pendingPetty.map((r) => ({ id: r.id, amount: Number(r.amount), sub: `${r.reason} — ${r.requestedBy.name}`, urgency: r.urgency })),
+    pendingItems: pendingItems.map((i) => ({ id: i.id, name: i.name, unit: i.unit, by: i.proposedBy?.name ?? "site" })),
     pendingExpenses: pendingExpenses.map((e) => ({
       id: e.id,
       amount: Number(e.amount),

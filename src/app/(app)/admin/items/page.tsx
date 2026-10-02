@@ -13,7 +13,7 @@ export default async function ItemsPage() {
         items={items.map((i) => ({
           id: i.id, name: i.name, category: i.category, unit: i.unit,
           reorderLevel: Number(i.reorderLevel), isWeldingConsumable: i.isWeldingConsumable,
-          kgPerUnit: i.kgPerUnit ? Number(i.kgPerUnit) : null, active: i.active,
+          kgPerUnit: i.kgPerUnit ? Number(i.kgPerUnit) : null, active: i.active, approved: i.approved,
         }))}
       />
     </div>

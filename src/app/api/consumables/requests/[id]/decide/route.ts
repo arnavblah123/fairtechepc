@@ -9,6 +9,8 @@ export const POST = withAuth<{ id: string }>("consumable.approve", async ({ user
   const before = await prisma.consumableRequest.findFirst({ where: { id: params.id, voidedAt: null } });
   if (!before) throw new ApiError(404, "Request not found");
   if (before.status !== "PENDING") throw new ApiError(400, "Already decided");
+  // Approving a request for a site-added item accepts that item into the master.
+  if (body.decision === "APPROVED") await prisma.consumableItem.updateMany({ where: { id: before.itemId, approved: false }, data: { approved: true } });
   const after = await prisma.consumableRequest.update({
     where: { id: before.id },
     data: { status: body.decision, fulfilment: body.decision === "APPROVED" ? body.fulfilment : null, decidedById: user.id, decidedAt: new Date(), decisionNote: body.note || null },

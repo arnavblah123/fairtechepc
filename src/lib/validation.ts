@@ -450,3 +450,15 @@ export const cashMoveSchema = z.object({
   amount: z.coerce.number().max(9999999).refine((v) => v !== 0, "Amount cannot be zero"),
   memo: z.string().trim().max(300).optional().or(z.literal("")),
 });
+
+
+// ---- Items added from the site while ordering ----
+export const itemProposeSchema = z.object({
+  name: z.string().trim().min(2, "Name the item").max(100),
+  unit: z.string().trim().min(1, "Unit (kg, nos, litre…)").max(20),
+  category: consCategorySchema.default("OTHER"),
+});
+export const itemDecideSchema = z.object({
+  decision: z.enum(["APPROVED", "REJECTED"]),
+  note: z.string().trim().max(300).optional().or(z.literal("")),
+});

@@ -28,13 +28,17 @@ const FULFILMENT_LABEL: Record<string, string> = {
  * → site inwards and accepts.
  */
 export function RequestsBoard({
-  siteId, canRequest, canApprove, canOrder, canShip, canClose, canDelete, items, requests, openNew = false,
+  siteId, canRequest, canApprove, canOrder, canShip, canClose, canDelete, canPropose, items: initialItems, requests, openNew = false,
 }: {
-  siteId: string; canRequest: boolean; canApprove: boolean; canOrder: boolean; canShip: boolean; canClose: boolean; canDelete: boolean; openNew?: boolean;
+  siteId: string; canRequest: boolean; canApprove: boolean; canOrder: boolean; canShip: boolean; canClose: boolean; canDelete: boolean; canPropose: boolean; openNew?: boolean;
   items: { id: string; name: string; unit: string }[]; requests: Req[];
 }) {
+  const [items, setItems] = useState(initialItems);
   const [showNew, setShowNew] = useState(openNew && canRequest);
   const [itemId, setItemId] = useState(items[0]?.id ?? "");
+  const [proposing, setProposing] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newUnit, setNewUnit] = useState("nos");
   const [qty, setQty] = useState("");
   const [reason, setReason] = useState("");
   const [neededBy, setNeededBy] = useState("");
@@ -63,6 +67,33 @@ export function RequestsBoard({
             <Select label="Item" hi="सामान" value={itemId} onChange={(e) => setItemId(e.target.value)}>
               {items.map((i) => (<option key={i.id} value={i.id}>{i.name} ({i.unit})</option>))}
             </Select>
+            {canPropose && (proposing ? (
+              <div className="space-y-2 rounded-xl bg-amber-50 p-3">
+                <p className="text-xs font-semibold text-amber-900">
+                  <Bi en="Add the missing item. Arnav will be asked to confirm it, but your request goes ahead now." hi="नया आइटम जोड़ें। अरनव बाद में पक्का करेंगे, पर रिक्वेस्ट अभी जाएगी।" />
+                </p>
+                <Input label="Item name" hi="आइटम का नाम" value={newName} onChange={(e) => setNewName(e.target.value)} required autoFocus />
+                <Input label="Unit" hi="इकाई" value={newUnit} onChange={(e) => setNewUnit(e.target.value)} required placeholder="kg / nos / litre" />
+                <div className="flex gap-2">
+                  <Button type="button" size="sm" variant="outline" className="flex-1" onClick={() => setProposing(false)}>Cancel</Button>
+                  <Button type="button" size="sm" className="flex-1" loading={busy} disabled={newName.trim().length < 2} onClick={async () => {
+                    const r = await submit(() => api<{ id: string; name: string; unit: string; existed: boolean }>(`/api/items/propose?siteId=${siteId}`, { body: { name: newName, unit: newUnit } }), { refresh: false });
+                    if (r) {
+                      if (!items.some((i) => i.id === r.id)) setItems([...items, { id: r.id, name: r.name, unit: r.unit }].sort((a, b) => a.name.localeCompare(b.name)));
+                      setItemId(r.id);
+                      setProposing(false);
+                      setNewName("");
+                    }
+                  }}>
+                    Add &amp; select
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <button type="button" className="text-sm font-semibold text-brand" onClick={() => setProposing(true)}>
+                + <Bi en="Item not in the list? Add it" hi="आइटम सूची में नहीं? जोड़ें" inline />
+              </button>
+            ))}
             <div className="grid grid-cols-2 gap-2">
               <Input label="Quantity" hi="मात्रा" value={qty} onChange={(e) => setQty(e.target.value)} inputMode="decimal" required />
               <Input label="Needed by" hi="कब तक चाहिए" type="date" value={neededBy} onChange={(e) => setNeededBy(e.target.value)} required />
