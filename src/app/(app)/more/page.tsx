@@ -4,6 +4,7 @@ import { can, ROLE_LABELS, type Capability } from "@/lib/permissions";
 import { Card } from "@/components/ui/Card";
 import { Bi } from "@/components/ui/Bi";
 import { LogoutButton } from "./LogoutButton";
+import { StorageCheck } from "./StorageCheck";
 
 type Item = { href: string; en: string; hi: string; cap?: Capability; caps?: Capability[] };
 
@@ -89,6 +90,11 @@ export default async function MorePage() {
           </Card>
         );
       })}
+      {can(user.role, "user.manage") && (
+        <Card title="System" hi="सिस्टम">
+          <StorageCheck tokenPresent={!!process.env.BLOB_READ_WRITE_TOKEN} />
+        </Card>
+      )}
     </div>
   );
 }
