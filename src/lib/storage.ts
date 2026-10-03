@@ -13,15 +13,27 @@ const LOCAL_DIR = path.join(process.cwd(), ".uploads");
  * accept any variable that holds a Blob read-write token, not just the default.
  */
 export function blobToken(): { name: string; token: string } | null {
-  if (process.env.BLOB_READ_WRITE_TOKEN) return { name: "BLOB_READ_WRITE_TOKEN", token: process.env.BLOB_READ_WRITE_TOKEN };
+  const clean = (v: string | undefined) => (v ?? "").trim().replace(/^["']|["']$/g, "");
+  const direct = clean(process.env.BLOB_READ_WRITE_TOKEN);
+  if (direct) return { name: "BLOB_READ_WRITE_TOKEN", token: direct };
   for (const [name, value] of Object.entries(process.env)) {
-    if (name.endsWith("READ_WRITE_TOKEN") && value?.startsWith("vercel_blob_rw_")) return { name, token: value };
+    const v = clean(value);
+    if (name.endsWith("READ_WRITE_TOKEN") && v.startsWith("vercel_blob_rw_")) return { name, token: v };
   }
   return null;
 }
 
-export const NOT_CONNECTED =
-  "Photo storage is not connected. In Vercel: Storage → create/connect a Blob store (tick Production), then Deployments → Redeploy.";
+/** For the self-test: what each Blob-looking variable holds, without revealing it. */
+function blobVariableReport(): string {
+  const rows = Object.entries(process.env)
+    .filter(([k]) => /BLOB|READ_WRITE_TOKEN/i.test(k))
+    .map(([k, v]) => {
+      const val = (v ?? "").trim();
+      if (!val) return `${k} = EMPTY`;
+      return `${k} = ${val.length} characters, starts "${val.slice(0, 15)}"`;
+    });
+  return rows.length ? ` Variables seen: ${rows.join("; ")}.` : " No Blob-related variable is visible to this deployment.";
+}
 
 /** Turn a Vercel Blob failure into something a person can act on from the phone. */
 export function blobProblem(e: unknown): string {
@@ -48,9 +60,12 @@ export async function storageStatus(): Promise<{ provider: "blob" | "local" | "n
       return { provider: "blob", tokenPresent, tokenName, ok: false, message: blobProblem(e) };
     }
   }
-  const names = Object.keys(process.env).filter((k) => /BLOB|TOKEN|STORE/i.test(k) && !/DATABASE|SESSION|SECRET/i.test(k));
-  const hint = names.length ? ` Variables seen in this deployment that look related: ${names.join(", ")}.` : " No Blob-related variable is visible to this deployment.";
-  if (process.env.VERCEL) return { provider: "none", tokenPresent, tokenName, ok: false, message: NOT_CONNECTED + hint };
+  const hint = blobVariableReport();
+  const empty = "BLOB_READ_WRITE_TOKEN" in process.env && !(process.env.BLOB_READ_WRITE_TOKEN ?? "").trim();
+  const lead = empty
+    ? "BLOB_READ_WRITE_TOKEN exists for this environment but its value is EMPTY. In Vercel: Storage → open the Blob store → copy the token shown under the project's connection (starts with vercel_blob_rw_) → Settings → Environment Variables → edit BLOB_READ_WRITE_TOKEN for Production and paste it → Redeploy."
+    : NOT_CONNECTED;
+  if (process.env.VERCEL) return { provider: "none", tokenPresent, tokenName, ok: false, message: lead + hint };
   return { provider: "local", tokenPresent, tokenName, ok: true, message: "Local disk (development only)." };
 }
 
