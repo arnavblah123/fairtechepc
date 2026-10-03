@@ -7,7 +7,7 @@ Open the app from the home-screen icon. Login once; it stays logged in.
 
 | Time / समय | Do this / यह करें | Screen / स्क्रीन |
 | --- | --- | --- |
-| **8:00 AM** | Take the **muster photo** of all workers (live camera, location ON). Mark **Present / Absent / Half day** for every worker. Enter in-time. <br>सबकी **मस्टर फोटो** लें (लाइव कैमरा, लोकेशन चालू)। हर मज़दूर की **हाज़िरी** लगाएँ। | Attendance / हाज़िरी |
+| **8:00 AM** | Take the **muster photo** of all workers (live camera). Mark **Present / Absent / Half day** for every worker. Enter in-time. <br>सबकी **मस्टर फोटो** लें (लाइव कैमरा)। हर मज़दूर की **हाज़िरी** लगाएँ। | Attendance / हाज़िरी |
 | **8:30 AM** | Submit the **Daily Plan**: per job, per stage, target quantity and manpower for today. <br>**दैनिक योजना** भरें: हर काम, हर स्टेज का आज का लक्ष्य और मज़दूर। | Daily plan / दैनिक योजना |
 | **8–10 AM** | **Photo 1** of work in progress. <br>काम की **फोटो 1**। | Photos / फोटो |
 | **10–12** | **Photo 2**. Enter any **consumables issued** (electrodes, wheels, gas) against the job. <br>**फोटो 2**। जो **सामान निकला** (इलेक्ट्रोड, व्हील, गैस) वह काम के नाम पर भरें। | Photos · Consumables |
@@ -18,7 +18,7 @@ Open the app from the home-screen icon. Login once; it stays logged in.
 
 ## Rules / नियम
 
-1. **Every photo must be taken live from the camera with location ON.** Gallery photos are rejected.
+1. **Every photo must be taken live from the camera.** Gallery photos are rejected.
    **हर फोटो कैमरे से लाइव, लोकेशन चालू रखकर।** गैलरी की फोटो नहीं चलेगी।
 2. **DPR must be submitted before 8 PM every working day.** A missing DPR shows red on the MD's screen.
    **डीपीआर रोज़ 8 बजे से पहले।** न भेजने पर एमडी की स्क्रीन पर लाल दिखता है।

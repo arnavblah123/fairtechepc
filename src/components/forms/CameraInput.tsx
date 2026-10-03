@@ -7,14 +7,14 @@ export type CapturedPhoto = { url: string; latitude: number; longitude: number; 
 
 /**
  * Live camera capture (capture="environment", no gallery), client-side compression to
- * max 1280px / ~200KB JPEG, geotag from the browser Geolocation API.
- * Rejects when location is denied or accuracy is worse than 100 m (per spec).
+ * max 1280px / ~200KB JPEG. Location is switched off for now: photos are saved
+ * without a geotag (0/0), and the server accepts that. `requireGeo` is kept so
+ * callers do not change when geotagging comes back.
  */
 export function CameraInput({
   label,
   hi,
   onCaptured,
-  requireGeo = true,
   preview,
 }: {
   label: string;
@@ -24,28 +24,16 @@ export function CameraInput({
   preview?: string | null;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const pendingFile = useRef<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [localPreview, setLocalPreview] = useState<string | null>(null);
 
   async function handle(file: File) {
+    pendingFile.current = file;
     setBusy(true);
     setError(null);
     try {
-      // Location first so a denial fails fast, before any upload.
-      let geo = { latitude: 0, longitude: 0, accuracyM: 0 };
-      if (requireGeo) {
-        const pos = await new Promise<GeolocationPosition>((res, rej) =>
-          navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy: true, timeout: 20000, maximumAge: 30000 }),
-        ).catch(() => {
-          throw new Error("Location permission is required. Turn on GPS and allow location. / लोकेशन चालू करें और अनुमति दें");
-        });
-        if (pos.coords.accuracy > 100) {
-          throw new Error(`Location accuracy is ${Math.round(pos.coords.accuracy)} m (needs 100 m or better). Move to open sky and retry. / खुले में जाकर दोबारा लें`);
-        }
-        geo = { latitude: pos.coords.latitude, longitude: pos.coords.longitude, accuracyM: pos.coords.accuracy };
-      }
-
       const blob = await compress(file);
       const form = new FormData();
       form.append("file", blob, "photo.jpg");
@@ -53,7 +41,8 @@ export function CameraInput({
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error((data as { error?: string }).error ?? "Upload failed");
       setLocalPreview(URL.createObjectURL(blob));
-      onCaptured({ url: (data as { url: string }).url, ...geo });
+      pendingFile.current = null;
+      onCaptured({ url: (data as { url: string }).url, latitude: 0, longitude: 0, accuracyM: 0 });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Photo failed");
     } finally {
@@ -76,7 +65,16 @@ export function CameraInput({
       </button>
       <input ref={inputRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => e.target.files?.[0] && handle(e.target.files[0])} />
       {shown && <img src={shown} alt="" className="mt-2 max-h-48 w-full rounded-xl object-cover" />}
-      {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+      {error && (
+        <div className="mt-2 rounded-lg bg-red-50 p-2 text-sm text-red-700">
+          <div>{error}</div>
+          {pendingFile.current && (
+            <button type="button" onClick={() => pendingFile.current && handle(pendingFile.current)} disabled={busy} className="mt-2 rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">
+              Try again / फिर कोशिश करें
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

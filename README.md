@@ -11,7 +11,7 @@ Mobile-first web app for supervising a remote fabrication site. Supervisors upda
 | Login, roles (incl. purchase desk), user management, jobs, stages | ✅ |
 | Labour master, attendance (muster photo), holidays, daily plan | ✅ |
 | Stage progress (quantity-based), DPR (compile, submit, print) | ✅ |
-| Geotagged 5-slot daily photos, gallery | ✅ |
+| 5-slot daily photos (live camera), gallery | ✅ |
 | Issues with escalation | ✅ |
 | Material plan per job, multi-item indent → approval → purchase order → dispatch → inward & acceptance | ✅ |
 | Machines: owned or rented, dispatch/return, status, breakdown tickets with sign-off | ✅ |

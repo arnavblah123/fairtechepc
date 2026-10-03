@@ -8,8 +8,8 @@ import { slotForHour } from "@/lib/slots";
 
 /**
  * Record a daily site photo. The date and slot come from the SERVER clock (IST),
- * so a missed window can never be backfilled. Geo accuracy must be <= 100 m
- * (also validated client-side before upload).
+ * so a missed window can never be backfilled. Geotagging is switched off for
+ * now, so photos arrive with 0/0 coordinates; the schema still accepts a fix.
  */
 export const POST = withAuth("photo.upload", async ({ user, req, ip }) => {
   const body = await parseBody(req, sitePhotoSchema);

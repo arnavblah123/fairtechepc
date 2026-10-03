@@ -7,7 +7,7 @@ export function PhotoLink({ url, lat, lng, size = "h-16 w-16" }: { url: string |
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={url} alt="photo" className={`${size} rounded-lg object-cover`} />
       </a>
-      {lat != null && lng != null && (
+      {lat != null && lng != null && (lat !== 0 || lng !== 0) && (
         <a className="text-xs font-semibold text-brand underline" target="_blank" rel="noreferrer" href={`https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=17/${lat}/${lng}`}>
           📍 Map
         </a>

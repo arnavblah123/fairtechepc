@@ -123,7 +123,9 @@ export function PhotoBoard({
                 </div>
                 {p.caption && <div className="truncate">{p.caption}</div>}
                 <div className="text-slate-500">{p.by} · {formatDateTime(p.time).slice(11)}</div>
-                <a className="font-semibold text-brand underline" target="_blank" rel="noreferrer" href={`https://www.openstreetmap.org/?mlat=${p.lat}&mlon=${p.lng}#map=17/${p.lat}/${p.lng}`}>📍 Map</a>
+                {(p.lat !== 0 || p.lng !== 0) && (
+                  <a className="font-semibold text-brand underline" target="_blank" rel="noreferrer" href={`https://www.openstreetmap.org/?mlat=${p.lat}&mlon=${p.lng}#map=17/${p.lat}/${p.lng}`}>📍 Map</a>
+                )}
                 {canDelete && (
                   <div className="mt-1">
                     <DeleteButton entity="SitePhoto" id={p.id} what="this photo" icon />
