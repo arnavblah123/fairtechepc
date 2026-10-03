@@ -129,13 +129,20 @@ Open the link in Chrome on Android → menu (⋮) → **Add to Home screen**. Do
 
 ### Photo storage (required for photos and bills)
 
-Photos (muster, site photos, bills) are stored in **Vercel Blob**:
+Photos go to a Vercel Blob store. The app works with both ways Vercel connects one:
+the older read-write token (`BLOB_READ_WRITE_TOKEN`) and the current model, where
+the project gets `BLOB_STORE_ID` and authenticates with its own Vercel OIDC token.
+Private and public stores both work; photos in a private store are streamed
+through the app to logged-in users only.
 
-1. In your Vercel project open **Storage** → **Create Database** → choose **Blob** → create (or **Connect** an existing Blob store).
-2. Connecting it adds `BLOB_READ_WRITE_TOKEN` to the project automatically.
-3. **Deployments** → ⋯ → **Redeploy**.
-
-Until Blob is connected, photo uploads show a clear error telling you to connect it; everything else works.
+1. In Vercel: **Storage → Create New → Blob**. Any name, private is fine.
+2. On the store page, click **Projects** in the left menu → **Connect Project** →
+   choose this project, tick Production, Preview and Development.
+3. **Deployments → Redeploy** the latest deployment.
+4. In the app, as superadmin: **More → System → Test**. It should say
+   "connected and working". If it mentions OIDC, turn on
+   **Project → Settings → Security → Secure Backend Access with OIDC Federation**
+   and redeploy.
 
 ### Updating later
 

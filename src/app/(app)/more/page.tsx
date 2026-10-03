@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/Card";
 import { Bi } from "@/components/ui/Bi";
 import { LogoutButton } from "./LogoutButton";
 import { StorageCheck } from "./StorageCheck";
-import { blobToken } from "@/lib/storage";
+import { blobCreds } from "@/lib/storage";
 
 type Item = { href: string; en: string; hi: string; cap?: Capability; caps?: Capability[] };
 
@@ -93,7 +93,7 @@ export default async function MorePage() {
       })}
       {can(user.role, "user.manage") && (
         <Card title="System" hi="सिस्टम">
-          <StorageCheck tokenPresent={!!blobToken()} tokenName={blobToken()?.name ?? null} />
+          <StorageCheck tokenPresent={!!blobCreds()} tokenName={(() => { const c = blobCreds(); return c ? (c.mode === "token" ? c.name : `OIDC · ${c.storeId}`) : null; })()} />
         </Card>
       )}
     </div>

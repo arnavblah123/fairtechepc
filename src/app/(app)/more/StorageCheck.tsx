@@ -15,7 +15,7 @@ export function StorageCheck({ tokenPresent, tokenName }: { tokenPresent: boolea
       setRes({
         ok: r.ok && !!data.ok,
         message: data.message ?? data.error ?? "Could not run the test",
-        tokenPresent: !!data.tokenPresent,
+        tokenPresent: !!(data as { credsPresent?: boolean }).credsPresent,
         deployment: data.deployment ?? null,
         env: data.env ?? "?",
         photosStored: data.photosStored ?? 0,
@@ -30,7 +30,7 @@ export function StorageCheck({ tokenPresent, tokenName }: { tokenPresent: boolea
         <div>
           <div className="font-semibold">Photo storage / फोटो स्टोरेज</div>
           <div className={tokenPresent ? "text-green-700" : "text-red-600"}>
-            {tokenPresent ? `Token present in this deployment (${tokenName})` : "No storage token in this deployment"}
+            {tokenPresent ? `Store connected to this deployment (${tokenName})` : "No Blob store connected to this deployment"}
           </div>
         </div>
         <button type="button" onClick={run} disabled={busy} className="rounded-xl border-2 border-slate-300 px-3 py-2 font-semibold disabled:opacity-50">
@@ -48,7 +48,7 @@ export function StorageCheck({ tokenPresent, tokenName }: { tokenPresent: boolea
       )}
       {!tokenPresent && (
         <p className="mt-2 text-xs text-slate-500">
-          In Vercel: Storage → Blob store → Connect to this project with Production ticked → Deployments → Redeploy. The token only reaches the app on a new deploy.
+          In Vercel: Storage → open the Blob store → Projects (left menu) → Connect this project with Production ticked → Deployments → Redeploy. The connection only reaches the app on a new deploy.
         </p>
       )}
     </div>
