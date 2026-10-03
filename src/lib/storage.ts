@@ -7,6 +7,19 @@ import { ApiError } from "./api";
 
 const LOCAL_DIR = path.join(process.cwd(), ".uploads");
 
+/**
+ * Vercel names the Blob token after the store when it is connected with a
+ * prefix (BILLS_STORE_READ_WRITE_TOKEN for a store called bills-store), so we
+ * accept any variable that holds a Blob read-write token, not just the default.
+ */
+export function blobToken(): { name: string; token: string } | null {
+  if (process.env.BLOB_READ_WRITE_TOKEN) return { name: "BLOB_READ_WRITE_TOKEN", token: process.env.BLOB_READ_WRITE_TOKEN };
+  for (const [name, value] of Object.entries(process.env)) {
+    if (name.endsWith("READ_WRITE_TOKEN") && value?.startsWith("vercel_blob_rw_")) return { name, token: value };
+  }
+  return null;
+}
+
 export const NOT_CONNECTED =
   "Photo storage is not connected. In Vercel: Storage → create/connect a Blob store (tick Production), then Deployments → Redeploy.";
 
@@ -22,19 +35,23 @@ export function blobProblem(e: unknown): string {
 }
 
 /** What the running deployment can see. Used by the storage self-test. */
-export async function storageStatus(): Promise<{ provider: "blob" | "local" | "none"; tokenPresent: boolean; ok: boolean; message: string }> {
-  const tokenPresent = !!process.env.BLOB_READ_WRITE_TOKEN;
-  if (tokenPresent) {
+export async function storageStatus(): Promise<{ provider: "blob" | "local" | "none"; tokenPresent: boolean; tokenName: string | null; ok: boolean; message: string }> {
+  const t = blobToken();
+  const tokenPresent = !!t;
+  const tokenName = t?.name ?? null;
+  if (t) {
     try {
-      const probe = await put(`probe/${randomBytes(6).toString("hex")}.txt`, "ok", { access: "public", contentType: "text/plain" });
-      await del(probe.url).catch(() => undefined);
-      return { provider: "blob", tokenPresent, ok: true, message: "Photo storage is connected and working." };
+      const probe = await put(`probe/${randomBytes(6).toString("hex")}.txt`, "ok", { access: "public", contentType: "text/plain", token: t.token });
+      await del(probe.url, { token: t.token }).catch(() => undefined);
+      return { provider: "blob", tokenPresent, tokenName, ok: true, message: `Photo storage is connected and working (using ${t.name}).` };
     } catch (e) {
-      return { provider: "blob", tokenPresent, ok: false, message: blobProblem(e) };
+      return { provider: "blob", tokenPresent, tokenName, ok: false, message: blobProblem(e) };
     }
   }
-  if (process.env.VERCEL) return { provider: "none", tokenPresent, ok: false, message: NOT_CONNECTED };
-  return { provider: "local", tokenPresent, ok: true, message: "Local disk (development only)." };
+  const names = Object.keys(process.env).filter((k) => /BLOB|TOKEN|STORE/i.test(k) && !/DATABASE|SESSION|SECRET/i.test(k));
+  const hint = names.length ? ` Variables seen in this deployment that look related: ${names.join(", ")}.` : " No Blob-related variable is visible to this deployment.";
+  if (process.env.VERCEL) return { provider: "none", tokenPresent, tokenName, ok: false, message: NOT_CONNECTED + hint };
+  return { provider: "local", tokenPresent, tokenName, ok: true, message: "Local disk (development only)." };
 }
 
 /**
@@ -43,9 +60,10 @@ export async function storageStatus(): Promise<{ provider: "blob" | "local" | "n
  */
 export async function storeImage(buf: Buffer, ext: "jpg" | "png"): Promise<string> {
   const name = `${new Date().toISOString().slice(0, 10)}/${randomBytes(8).toString("hex")}.${ext}`;
-  if (process.env.BLOB_READ_WRITE_TOKEN) {
+  const blob_ = blobToken();
+  if (blob_) {
     try {
-      const blob = await put(name, buf, { access: "public", contentType: ext === "jpg" ? "image/jpeg" : "image/png" });
+      const blob = await put(name, buf, { access: "public", contentType: ext === "jpg" ? "image/jpeg" : "image/png", token: blob_.token });
       return blob.url;
     } catch (e) {
       throw new ApiError(500, blobProblem(e));

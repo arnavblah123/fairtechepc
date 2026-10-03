@@ -12,12 +12,10 @@ export const GET = withAuth("export.csv", async ({ user, req }) => {
       "Job No": j.jobNumber,
       Name: j.name,
       Client: j.clientName,
-      "Planned MT": j.plannedTonnage ? Number(j.plannedTonnage) : "",
       "Planned start": formatDate(j.plannedStart),
       "Planned end": formatDate(j.plannedEnd),
       Status: j.voidedAt ? "VOID" : j.status,
       Stages: j.stages.length,
-      "Welding norm kg/MT": j.weldingNormKgPerMT ? Number(j.weldingNormKgPerMT) : "",
     })),
   );
 });

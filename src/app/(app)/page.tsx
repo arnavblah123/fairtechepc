@@ -133,7 +133,7 @@ async function SiteHome() {
   const steps: { href: string; en: string; hi: string; done: boolean }[] = [
     { href: "/attendance", en: "Muster photo + attendance", hi: "मस्टर फोटो और हाज़िरी", done: muster > 0 && present > 0 },
     { href: "/plan", en: "Daily plan", hi: "दैनिक योजना", done: !!plan },
-    { href: "/photos", en: `Site photos (${filled.size}/5)`, hi: "साइट फोटो", done: filled.size >= 5 },
+    { href: "/photos", en: `Site photos (${filled.size}/${PHOTO_SLOTS.length})`, hi: "साइट फोटो", done: filled.size >= PHOTO_SLOTS.length },
     ...(can(user.role, "dpr.submit") ? [{ href: "/dpr", en: "Submit DPR before 8 PM", hi: "8 बजे से पहले डीपीआर", done: dpr?.status === "SUBMITTED" }] : []),
   ];
   return (
@@ -298,7 +298,7 @@ async function AdminDashboard() {
       {/* Today at a glance */}
       <div className="grid grid-cols-2 gap-3">
         <Link href="/photos">
-          <Stat label={`Photos ${d.slotsFilled.length}/5`} hi="फोटो" tone={d.slotsFilled.length >= 5 ? "green" : "red"}
+          <Stat label={`Photos ${d.slotsFilled.length}/${PHOTO_SLOTS.length}`} hi="फोटो" tone={d.slotsFilled.length >= PHOTO_SLOTS.length ? "green" : "red"}
             value={<span className="flex gap-0.5">{PHOTO_SLOTS.map((s) => (<span key={s.slot} className={`h-3 flex-1 rounded-sm ${d.slotsFilled.includes(s.slot) ? "bg-green-600" : "bg-red-400"}`} />))}</span>} />
         </Link>
         <Link href="/attendance">

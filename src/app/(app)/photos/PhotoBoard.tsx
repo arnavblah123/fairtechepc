@@ -9,7 +9,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { CameraInput } from "@/components/forms/CameraInput";
 import { Input, Select } from "@/components/ui/Field";
 import { formatDate, formatDateTime } from "@/lib/format";
-import { PHOTO_SLOTS } from "@/lib/slots";
+import { PHOTO_SLOTS, slotLabel } from "@/lib/slots";
 import { DeleteButton } from "@/components/forms/DeleteButton";
 
 type Photo = { id: string; url: string; slot: number | null; kind: string; caption: string | null; lat: number; lng: number; time: string; by: string; job: string | null; stage: string | null };
@@ -80,7 +80,7 @@ export function PhotoBoard({
               onCaptured={async (p) => {
                 try {
                   const r = await api<{ slot: number | null }>(`/api/photos?siteId=${siteId}`, { body: { ...p, caption, jobId: jobId || null, stageId: stageId || null } });
-                  toast.push({ kind: "success", en: r.slot ? `Saved in slot ${PHOTO_SLOTS[r.slot - 1].label} ✓` : "Saved (outside photo windows) ✓", hi: "फोटो सेव हो गई" });
+                  toast.push({ kind: "success", en: r.slot ? `Saved: ${slotLabel(r.slot)} ✓` : "Saved (outside photo windows) ✓", hi: "फोटो सेव हो गई" });
                   setCaption("");
                   router.refresh();
                 } catch (e) {
@@ -89,7 +89,7 @@ export function PhotoBoard({
               }}
             />
             <p className="text-xs text-slate-500">
-              <Bi en="5 photos daily, one in each window. Missed windows stay red permanently." hi="रोज़ 5 फोटो, हर समय-खिड़की में एक। छूटी खिड़की हमेशा लाल रहेगी।" />
+              <Bi en="3 photos a day: morning, midday, evening. A missed window stays red permanently." hi="रोज़ 3 फोटो: सुबह, दोपहर, शाम। छूटी खिड़की हमेशा लाल रहेगी।" />
             </p>
           </div>
         </Card>
@@ -118,7 +118,7 @@ export function PhotoBoard({
               </a>
               <div className="mt-1 text-xs">
                 <div className="font-semibold">
-                  {p.kind === "MUSTER" ? "Muster" : p.slot ? PHOTO_SLOTS[p.slot - 1].label : "Extra"}
+                  {p.kind === "MUSTER" ? "Muster" : slotLabel(p.slot)}
                   {p.job ? ` · ${p.job}` : ""}{p.stage ? ` · ${p.stage}` : ""}
                 </div>
                 {p.caption && <div className="truncate">{p.caption}</div>}

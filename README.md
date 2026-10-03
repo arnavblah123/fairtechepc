@@ -10,8 +10,8 @@ Mobile-first web app for supervising a remote fabrication site. Supervisors upda
 | --- | --- |
 | Login, roles (incl. purchase desk), user management, jobs, stages | ✅ |
 | Labour master, attendance (muster photo), holidays, daily plan | ✅ |
-| Stage progress (quantity-based), DPR (compile, submit, print) | ✅ |
-| 5-slot daily photos (live camera), gallery | ✅ |
+| Stage progress (time-based, with what each stage will do written down), DPR (compile, submit, print) | ✅ |
+| 3 daily photo windows (morning, midday, evening) with an on-every-screen reminder, gallery | ✅ |
 | Issues with escalation | ✅ |
 | Material plan per job, multi-item indent → approval → purchase order → dispatch → inward & acceptance | ✅ |
 | Machines: owned or rented, dispatch/return, status, breakdown tickets with sign-off | ✅ |
@@ -24,8 +24,8 @@ Mobile-first web app for supervising a remote fabrication site. Supervisors upda
 ### How progress is measured
 
 **Time is the yardstick.** A job is created with all its stages written in one
-go — name and planned days for each — and saved once. There is no tonnage
-field and nobody types a percentage.
+go — name, what will be done, and planned days for each — and saved once.
+There is no tonnage or quantity target and nobody types a percentage.
 
 Each day the supervisor records who worked on which stage, and ticks a stage
 when it is finished. From that the app knows when each stage started, how many
@@ -34,9 +34,9 @@ progress weights stages by their planned days, so a 25-day welding stage counts
 for more than a 6-day inspection, and a stage never reads 100% until it is
 ticked finished.
 
-For the jobs where quantity is actually measured, switch on "also track
-quantity" when writing the stages; those stages then read by quantity done
-against plan instead, which is a truer figure when it exists.
+Each stage carries a short note of what will be done in it, written by the
+superadmin when the job is set up, so the site sees the intent and not a
+number.
 
 ### Approvals
 

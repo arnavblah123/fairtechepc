@@ -1,23 +1,20 @@
 "use client";
 import { useState } from "react";
-import type { QtyUnit } from "@prisma/client";
 import { api, useSubmit } from "@/lib/client";
 import { Button } from "@/components/ui/Button";
-import { Input, Select } from "@/components/ui/Field";
+import { Input, Textarea } from "@/components/ui/Field";
 import { Bi } from "@/components/ui/Bi";
 import { Card } from "@/components/ui/Card";
 import { DeleteButton } from "@/components/forms/DeleteButton";
 import { StageGrid, blankStage, presetStages, usableStages, type StageDraft } from "../../StageGrid";
 
-type StageRow = { id: string; sequence: number; name: string; unit: QtyUnit; plannedQty: number; plannedDays: number; hasProgress: boolean };
-const UNITS: QtyUnit[] = ["MT", "NOS", "METRE", "SQM"];
+type StageRow = { id: string; sequence: number; name: string; scope: string | null; plannedDays: number; hasProgress: boolean };
 
 export function StageManager({ jobId, stages, canDelete }: { jobId: string; stages: StageRow[]; canDelete: boolean }) {
   const { busy, submit } = useSubmit();
   const [editing, setEditing] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<StageDraft[]>(stages.length === 0 ? presetStages() : [blankStage()]);
   const [adding, setAdding] = useState(stages.length === 0);
-  const [withQty, setWithQty] = useState(stages.some((s) => s.plannedQty > 0));
 
   const move = (idx: number, dir: -1 | 1) => {
     const order = stages.map((s) => s.id);
@@ -40,7 +37,7 @@ export function StageManager({ jobId, stages, canDelete }: { jobId: string; stag
   return (
     <div className="space-y-4">
       <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
-        Only you can add, rename, reorder or delete stages. Supervisors only fill quantity done against them.
+        Only you can add, rename, reorder or delete stages. Supervisors mark work done against them.
       </p>
 
       {stages.length > 0 && (
@@ -69,9 +66,10 @@ export function StageManager({ jobId, stages, canDelete }: { jobId: string; stag
                     <div className="min-w-0 flex-1">
                       <div className="font-semibold">{s.sequence}. {s.name}</div>
                       <div className="text-xs text-slate-500">
-                        {s.plannedDays} days{s.plannedQty > 0 ? ` · ${s.plannedQty} ${s.unit}` : ""}
+                        {s.plannedDays} days
                         {s.hasProgress && " · has progress"}
                       </div>
+                      {s.scope && <div className="mt-1 whitespace-pre-wrap text-xs text-slate-700">{s.scope}</div>}
                     </div>
                     <button onClick={() => setEditing(s.id)} className="min-h-[44px] rounded-lg border-2 border-slate-300 px-3 text-sm font-semibold">Edit</button>
                     {canDelete && <DeleteButton entity="Stage" id={s.id} what={`stage "${s.name}"`} icon />}
@@ -88,7 +86,7 @@ export function StageManager({ jobId, stages, canDelete }: { jobId: string; stag
           <p className="mb-3 text-sm text-slate-600">
             <Bi en="Name and planned days for each. Save once." hi="हर स्टेज का नाम और दिन। एक बार सेव करें।" />
           </p>
-          <StageGrid drafts={drafts} onChange={setDrafts} startAt={stages.length + 1} withQty={withQty} onToggleQty={setWithQty} />
+          <StageGrid drafts={drafts} onChange={setDrafts} startAt={stages.length + 1} />
           <Button size="lg" full className="mt-3" loading={busy} onClick={saveAll}>
             <Bi en={`Save ${usableStages(drafts).length} stages`} hi="सारी स्टेज सेव करें" />
           </Button>
@@ -111,31 +109,25 @@ function SingleStageForm({
   onSave,
   onCancel,
 }: {
-  initial: { name: string; unit: QtyUnit; plannedQty: number; plannedDays: number };
+  initial: { name: string; scope: string | null; plannedDays: number };
   busy: boolean;
-  onSave: (d: { name: string; unit: QtyUnit; plannedQty: number; plannedDays: number }) => void;
+  onSave: (d: { name: string; scope: string | null; plannedDays: number }) => void;
   onCancel: () => void;
 }) {
   const [name, setName] = useState(initial.name);
-  const [unit, setUnit] = useState<QtyUnit>(initial.unit);
-  const [qty, setQty] = useState(String(initial.plannedQty));
+  const [scope, setScope] = useState(initial.scope ?? "");
   const [days, setDays] = useState(String(initial.plannedDays));
   return (
     <form
       className="space-y-3"
       onSubmit={(e) => {
         e.preventDefault();
-        onSave({ name, unit, plannedQty: Number(qty || 0), plannedDays: Number(days) });
+        onSave({ name, scope: scope.trim() || null, plannedDays: Number(days) });
       }}
     >
       <Input label="Stage name" hi="स्टेज नाम" value={name} onChange={(e) => setName(e.target.value)} required list="stage-presets" />
-      <div className="grid grid-cols-3 gap-2">
-        <Select label="Unit" hi="इकाई" value={unit} onChange={(e) => setUnit(e.target.value as QtyUnit)}>
-          {UNITS.map((u) => (<option key={u} value={u}>{u}</option>))}
-        </Select>
-        <Input label="Qty (optional)" hi="मात्रा" value={qty} onChange={(e) => setQty(e.target.value)} inputMode="decimal" />
-        <Input label="Planned days" hi="दिन" value={days} onChange={(e) => setDays(e.target.value)} inputMode="numeric" required />
-      </div>
+      <Textarea label="What will be done" hi="क्या होगा" value={scope} onChange={(e) => setScope(e.target.value)} />
+      <Input label="Planned days" hi="दिन" value={days} onChange={(e) => setDays(e.target.value)} inputMode="numeric" required />
       <div className="flex gap-2">
         <Button type="button" variant="outline" className="flex-1" onClick={onCancel}>Cancel</Button>
         <Button type="submit" className="flex-1" loading={busy}><Bi en="Save" hi="सेव" /></Button>

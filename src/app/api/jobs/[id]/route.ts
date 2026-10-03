@@ -27,7 +27,6 @@ export const PATCH = withAuth<{ id: string }>("job.manage", async ({ user, req, 
       drawingRef: body.drawingRef === undefined ? undefined : body.drawingRef || null,
       plannedStart: body.plannedStart ? dateKeyToDate(body.plannedStart) : undefined,
       plannedEnd: body.plannedEnd ? dateKeyToDate(body.plannedEnd) : undefined,
-      weldingNormKgPerMT: body.weldingNormKgPerMT === undefined ? undefined : body.weldingNormKgPerMT,
       status: body.status,
     },
   });

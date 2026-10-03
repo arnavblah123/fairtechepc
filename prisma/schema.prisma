@@ -224,8 +224,10 @@ model Stage {
   job         Job       @relation(fields: [jobId], references: [id])
   sequence    Int
   name        String
-  unit        QtyUnit   @default(MT)
-  plannedQty  Decimal   @default(0) @db.Decimal(12, 3) // optional; 0 = track by time only
+  /// What will be done in this stage, in the superadmin's words. Shown to the site.
+  scope       String?
+  unit        QtyUnit   @default(MT) // legacy; no longer entered
+  plannedQty  Decimal   @default(0) @db.Decimal(12, 3) // legacy; no longer entered
   plannedDays Int
   actualStart DateTime? @db.Date
   actualEnd   DateTime? @db.Date

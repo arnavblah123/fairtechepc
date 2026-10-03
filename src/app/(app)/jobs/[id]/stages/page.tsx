@@ -18,7 +18,7 @@ export default async function StagesPage({ params }: { params: Promise<{ id: str
       <StageManager
         jobId={job.id}
         canDelete
-        stages={job.stages.map((s) => ({ id: s.id, sequence: s.sequence, name: s.name, unit: s.unit, plannedQty: Number(s.plannedQty), plannedDays: s.plannedDays, hasProgress: s._count.progress > 0 }))}
+        stages={job.stages.map((s) => ({ id: s.id, sequence: s.sequence, name: s.name, scope: s.scope, plannedDays: s.plannedDays, hasProgress: s._count.progress > 0 }))}
       />
     </div>
   );

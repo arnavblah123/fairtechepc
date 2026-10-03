@@ -4,7 +4,7 @@ import { useState } from "react";
 type Result = { ok: boolean; message: string; tokenPresent: boolean; deployment: string | null; env: string; photosStored: number };
 
 /** Superadmin-only: one tap tells whether the running deployment can store photos. */
-export function StorageCheck({ tokenPresent }: { tokenPresent: boolean }) {
+export function StorageCheck({ tokenPresent, tokenName }: { tokenPresent: boolean; tokenName: string | null }) {
   const [res, setRes] = useState<Result | null>(null);
   const [busy, setBusy] = useState(false);
   async function run() {
@@ -30,7 +30,7 @@ export function StorageCheck({ tokenPresent }: { tokenPresent: boolean }) {
         <div>
           <div className="font-semibold">Photo storage / फोटो स्टोरेज</div>
           <div className={tokenPresent ? "text-green-700" : "text-red-600"}>
-            {tokenPresent ? "Token present in this deployment" : "No storage token in this deployment"}
+            {tokenPresent ? `Token present in this deployment (${tokenName})` : "No storage token in this deployment"}
           </div>
         </div>
         <button type="button" onClick={run} disabled={busy} className="rounded-xl border-2 border-slate-300 px-3 py-2 font-semibold disabled:opacity-50">

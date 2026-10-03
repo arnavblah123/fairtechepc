@@ -74,7 +74,8 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
                       Days: <b>{s.daysUsed}</b> / {s.plannedDays}
                       {s.daysOverrun > 0 && ` (+${s.daysOverrun} over)`}
                     </div>
-                    <div>{s.plannedQty > 0 ? <>Qty: <b>{formatNum(s.actualQty)}</b> / {formatNum(s.plannedQty)} {s.unit}</> : <span className="text-slate-400">tracked by time</span>}</div>
+                    <div className="text-slate-400">{s.basis === "TIME" ? "tracked by time" : s.basis === "DONE" ? "finished" : s.basis === "QUANTITY" ? "by quantity" : "not started"}</div>
+                    {s.scope && <div className="col-span-2 mt-1 whitespace-pre-wrap text-slate-700">{s.scope}</div>}
                     <div className="col-span-2 text-slate-400">
                       {s.status === "NOT_STARTED" ? "Not started" : `${formatDate(s.actualStart)} → ${s.actualEnd ? formatDate(s.actualEnd) : "ongoing"}`}
                       {s.labourHours > 0 && <> · <b className="text-slate-600">{formatNum(s.labourHours, 1)} labour hours</b></>}
@@ -110,12 +111,6 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
           <dd className="col-span-2">{job.drawingRef ?? "—"}</dd>
           <dt className="text-slate-500">Dates</dt>
           <dd className="col-span-2">{formatDate(job.plannedStart)} → {formatDate(job.plannedEnd)}</dd>
-          {isAdmin && (
-            <>
-              <dt className="text-slate-500">Welding norm</dt>
-              <dd className="col-span-2">{job.weldingNormKgPerMT ? `${formatNum(job.weldingNormKgPerMT)} kg / MT` : "not set"}</dd>
-            </>
-          )}
           <dt className="text-slate-500">Description</dt>
           <dd className="col-span-2 whitespace-pre-wrap">{job.description ?? "—"}</dd>
         </dl>

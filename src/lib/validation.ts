@@ -84,9 +84,8 @@ export const unitSchema = z.enum(["MT", "NOS", "METRE", "SQM"]);
 
 export const stageSchema = z.object({
   name: z.string().trim().min(2).max(60),
-  unit: unitSchema.default("MT"),
-  /** Optional. 0 means progress on this stage is tracked by time and the finished tick only. */
-  plannedQty: z.coerce.number().min(0).max(999999999).default(0),
+  /** What will be done in this stage. Progress is tracked by planned days and the finished tick. */
+  scope: z.string().trim().max(500).optional().nullable().transform((v) => v || null),
   plannedDays: z.coerce.number().int().positive("Must be at least 1").max(3650),
 });
 
@@ -99,7 +98,6 @@ export const jobSchema = z
     drawingRef: z.string().trim().max(120).optional().or(z.literal("")),
     plannedStart: dateKey,
     plannedEnd: dateKey,
-    weldingNormKgPerMT: z.coerce.number().min(0).max(1000).optional().nullable(),
     status: jobStatusSchema.default("ACTIVE"),
     /** Written in the same go as the job, in order. */
     stages: z.array(stageSchema).max(40).optional(),

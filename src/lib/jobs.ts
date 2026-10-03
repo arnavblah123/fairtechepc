@@ -14,6 +14,7 @@ export type StageSummary = {
   id: string;
   sequence: number;
   name: string;
+  scope: string | null;
   unit: string;
   plannedQty: number;
   plannedDays: number;
@@ -83,6 +84,7 @@ export async function jobStageSummary(jobId: string): Promise<{
       id: s.id,
       sequence: s.sequence,
       name: s.name,
+      scope: s.scope,
       unit: s.unit,
       plannedQty,
       plannedDays: s.plannedDays,

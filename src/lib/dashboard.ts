@@ -21,7 +21,7 @@ export async function siteDashboard(siteId: string) {
       prisma.sitePhoto.findMany({ where: { siteId, kind: "DAILY_SLOT", date: dateKeyToDate(today), voidedAt: null }, select: { slot: true } }),
       prisma.attendance.findMany({ where: { siteId, date: dateKeyToDate(today) }, select: { status: true } }),
       prisma.dailyPlan.findUnique({ where: { siteId_date: { siteId, date: dateKeyToDate(today) } }, include: { items: { select: { manpowerPlanned: true } } } }),
-      prisma.job.findMany({ where: { siteId, voidedAt: null, status: "ACTIVE" }, select: { id: true, jobNumber: true, name: true, plannedTonnage: true, plannedStart: true, plannedEnd: true } }),
+      prisma.job.findMany({ where: { siteId, voidedAt: null, status: "ACTIVE" }, select: { id: true, jobNumber: true, name: true, plannedStart: true, plannedEnd: true } }),
       prisma.consumableRequest.findMany({ where: { siteId, status: "PENDING", voidedAt: null }, orderBy: { requestedAt: "asc" }, include: { item: { select: { name: true, unit: true } }, requestedBy: { select: { name: true } } } }),
       prisma.pettyCashRequest.findMany({ where: { siteId, status: "PENDING", voidedAt: null }, orderBy: { requestedAt: "asc" }, include: { requestedBy: { select: { name: true } } } }),
       prisma.advance.findMany({ where: { siteId, status: "PENDING", voidedAt: null }, orderBy: { requestedAt: "asc" }, include: { worker: { select: { code: true, name: true } }, requestedBy: { select: { name: true } } } }),

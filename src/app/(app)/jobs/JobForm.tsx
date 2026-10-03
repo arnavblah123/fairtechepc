@@ -16,17 +16,15 @@ export type JobFormData = {
   drawingRef: string;
   plannedStart: string;
   plannedEnd: string;
-  weldingNormKgPerMT: string;
   status: JobStatus;
 };
 
 /** Job and its stages in one save; nothing to come back for. */
 export function JobForm({ siteId, job }: { siteId: string; job?: JobFormData }) {
   const [f, setF] = useState<JobFormData>(
-    job ?? { name: "", clientName: "", description: "", drawingRef: "", plannedStart: "", plannedEnd: "", weldingNormKgPerMT: "", status: "ACTIVE" },
+    job ?? { name: "", clientName: "", description: "", drawingRef: "", plannedStart: "", plannedEnd: "", status: "ACTIVE" },
   );
   const [stages, setStages] = useState<StageDraft[]>(presetStages());
-  const [withQty, setWithQty] = useState(false);
   const { busy, submit } = useSubmit();
   const set = (k: keyof JobFormData) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setF({ ...f, [k]: e.target.value });
   const ready = usableStages(stages);
@@ -37,7 +35,7 @@ export function JobForm({ siteId, job }: { siteId: string; job?: JobFormData }) 
         className="space-y-4"
         onSubmit={async (e) => {
           e.preventDefault();
-          const body = { ...f, weldingNormKgPerMT: f.weldingNormKgPerMT === "" ? null : Number(f.weldingNormKgPerMT) };
+          const body = f;
           if (job?.id) {
             submit(() => api(`/api/jobs/${job.id}`, { method: "PATCH", body }), { to: `/jobs/${job.id}` });
           } else {
@@ -62,11 +60,10 @@ export function JobForm({ siteId, job }: { siteId: string; job?: JobFormData }) 
             <option value="CLOSED">Closed</option>
           </Select>
         )}
-        <Input label="Welding norm, kg per MT (optional)" hi="वेल्डिंग नॉर्म" value={f.weldingNormKgPerMT} onChange={set("weldingNormKgPerMT")} inputMode="decimal" hint="Only used when stage quantities are tracked in MT." />
 
         {!job && (
           <div className="border-t pt-4">
-            <StageGrid drafts={stages} onChange={setStages} withQty={withQty} onToggleQty={setWithQty} />
+            <StageGrid drafts={stages} onChange={setStages} />
           </div>
         )}
 

@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, useSubmit } from "@/lib/client";
+import { PHOTO_SLOTS } from "@/lib/slots";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Field";
 import { Bi } from "@/components/ui/Bi";
@@ -64,7 +65,7 @@ export function DprView({
         <div className="flex flex-wrap items-center gap-2">
           {submitted ? <Badge tone="green">Submitted by {submitted.by} · {formatDateTime(submitted.at)}</Badge> : <Badge tone="amber">Not submitted yet</Badge>}
           {data.holiday && <Badge tone="blue">Holiday: {data.holiday}</Badge>}
-          <Badge tone={data.photoSlotsFilled.length >= 5 ? "green" : "red"}>Photos {data.photoSlotsFilled.length}/5</Badge>
+          <Badge tone={data.photoSlotsFilled.length >= PHOTO_SLOTS.length ? "green" : "red"}>Photos {data.photoSlotsFilled.length}/{PHOTO_SLOTS.length}</Badge>
         </div>
 
         <Card title="Manpower" hi="मज़दूर">

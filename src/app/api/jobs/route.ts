@@ -13,7 +13,7 @@ export const GET = withAuth("job.view", async ({ user, req }) => {
   const jobs = await prisma.job.findMany({
     where: { siteId, voidedAt: null },
     orderBy: { jobNumber: "asc" },
-    select: { id: true, jobNumber: true, name: true, clientName: true, plannedTonnage: true, plannedStart: true, plannedEnd: true, status: true },
+    select: { id: true, jobNumber: true, name: true, clientName: true, plannedStart: true, plannedEnd: true, status: true },
   });
   return ok({ jobs });
 });
@@ -36,7 +36,6 @@ export const POST = withAuth("job.manage", async ({ user, req, ip }) => {
             drawingRef: body.drawingRef || null,
             plannedStart: dateKeyToDate(body.plannedStart),
             plannedEnd: dateKeyToDate(body.plannedEnd),
-            weldingNormKgPerMT: body.weldingNormKgPerMT ?? null,
             status: body.status,
             createdById: user.id,
           },
