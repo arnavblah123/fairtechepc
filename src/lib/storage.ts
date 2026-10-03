@@ -7,6 +7,9 @@ import { ApiError } from "./api";
 
 const LOCAL_DIR = path.join(process.cwd(), ".uploads");
 
+export const NOT_CONNECTED =
+  "Photo storage is not connected. In Vercel: Storage → create/connect a Blob store (tick Production), then Deployments → Redeploy.";
+
 /**
  * Vercel names the Blob token after the store when it is connected with a
  * prefix (BILLS_STORE_READ_WRITE_TOKEN for a store called bills-store), so we
