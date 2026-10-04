@@ -85,6 +85,24 @@ Superadmin can reset anyone's password from **More → Users**. Everyone can cha
 
 ---
 
+## Owner dashboard feed
+
+The owner dashboard (`fairtechadmin`) shows every Fairtech app on one screen
+without reading this app's database. This app exposes two routes for it, both
+authenticated by the header `x-admin-key` compared with the env var
+`ADMIN_FEED_KEY` (same random value on every app and on the dashboard;
+`openssl rand -hex 32`). They are exempt from the login cookie. With the
+variable unset they answer 503; with a wrong key, 401.
+
+| Route | What it does |
+| --- | --- |
+| `GET /api/admin-feed` | Everything pending or wrong **across all sites**: KPIs, approvals (advances, expenses and bills, petty cash requests, indents and consumable requests, proposed items), flags (open issues, jobs behind plan, low stock, missing DPR, low site cash, welding over norm, open machine tickets), last 24h of audit activity, issues raised this week, report links. Each item carries the site name in `unit`. |
+| `POST /api/admin-feed/act` | One approve / query / reject / resolve, run through the same code as the app's own buttons (ledger postings, cash book, audit rows), attributed to the superadmin matched by `actor.email` / username, else the first active superadmin. Acting twice returns `{ ok: false, error: "Already decided" }`. |
+
+Set `ADMIN_FEED_KEY` in Vercel → Settings → Environment Variables and redeploy, then add this app's URL in the dashboard under Settings → Apps.
+
+---
+
 ## Part A: Put it on the internet for free (Vercel + Neon)
 
 About 15 minutes, all in the browser. No credit card, nothing to install on your laptop.

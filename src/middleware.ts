@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC = ["/login", "/api/auth/login", "/setup", "/api/setup", "/manifest.webmanifest", "/icon.svg"];
+// /api/admin-feed carries its own shared-secret header (see src/lib/admin-feed.ts), not a session cookie.
+const PUBLIC = ["/login", "/api/auth/login", "/setup", "/api/setup", "/api/admin-feed", "/manifest.webmanifest", "/icon.svg"];
 
 /** Cheap gate: no cookie -> login. Real role checks happen in pages and API routes. */
 export function middleware(req: NextRequest) {
