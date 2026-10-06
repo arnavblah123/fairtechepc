@@ -184,7 +184,18 @@ second site exists.
 
 A supervisor who kept an expense sheet in Excel (cash received, lines spent)
 can have it entered in one go instead of line by line on the phone. The sheet
-is typed into a small JSON file (see `data/expense-sheets/`) and imported:
+is typed into a small JSON file in `data/expense-sheets/` and listed in
+`BUNDLED_SHEETS` in `src/lib/expense-sheets.ts`, so it ships with the app.
+
+**From the phone (superadmin):** after the deploy, open **More → Admin →
+Import expense sheet**. The sheet shows with its totals; pick whose cash it is
+(pre-selected when a login has the same name as the sheet, otherwise add them
+under **Users & passwords** first), tap **Preview** to see what will be entered,
+then **Enter now (pending)**. Nothing is approved there: the lines wait on the
+dashboard like any other expense.
+
+**From a laptop:** the same import runs as a script, which is also the only way
+to approve everything in one go:
 
 ```bash
 npm run import:sheet -- data/expense-sheets/<sheet>.json --dry-run     # shows what would be entered
@@ -192,7 +203,7 @@ npm run import:sheet -- data/expense-sheets/<sheet>.json               # enters 
 npm run import:sheet -- data/expense-sheets/<sheet>.json --approve     # enters and approves in one go
 ```
 
-It needs `DATABASE_URL` in `.env` (the same Neon string Vercel uses). What it does:
+It needs `DATABASE_URL` in `.env` (the same Neon string Vercel uses). What both do:
 
 * Each cash the person received becomes a row in their **cash-in-hand ledger**
   and the site cash book, dated as on the sheet.
@@ -207,7 +218,8 @@ It needs `DATABASE_URL` in `.env` (the same Neon string Vercel uses). What it do
   supervisor if they have no login yet; `--as <username>` says which superadmin
   is entering it.
 
-Running it twice is safe: rows already entered are reported, not duplicated.
+Running it twice, or once from the phone and once from a laptop, is safe: rows
+already entered are reported, not duplicated.
 
 ---
 
@@ -224,7 +236,8 @@ src/lib/audit.ts         AuditLog writer (old/new values, user, time)
 src/lib/format.ts        ₹ Indian format, DD-MM-YYYY, IST helpers
 src/lib/seed-data.ts     seed logic shared by the CLI seed and the one-time /setup page
 scripts/build.mjs        Vercel build: prisma generate → migrate deploy → next build
-scripts/import-expense-sheet.ts  enter a hand-kept expense sheet (data/expense-sheets/*.json) in one go
+src/lib/expense-sheets.ts  enter a hand-kept expense sheet (data/expense-sheets/*.json) in one go; used by
+scripts/import-expense-sheet.ts  (CLI) and More → Admin → Import expense sheet (API + screen)
 src/app/(app)/           screens (mobile shell with bottom nav)
 src/app/api/             JSON API routes
 docs/SOP.md              one-page daily routine for the site in-charge (also at /sop in the app)
