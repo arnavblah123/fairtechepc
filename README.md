@@ -187,12 +187,18 @@ can have it entered in one go instead of line by line on the phone. The sheet
 is typed into a small JSON file in `data/expense-sheets/` and listed in
 `BUNDLED_SHEETS` in `src/lib/expense-sheets.ts`, so it ships with the app.
 
-**From the phone (superadmin):** after the deploy, open **More → Admin →
-Import expense sheet**. The sheet shows with its totals; pick whose cash it is
-(pre-selected when a login has the same name as the sheet, otherwise add them
-under **Users & passwords** first), tap **Preview** to see what will be entered,
-then **Enter now (pending)**. Nothing is approved there: the lines wait on the
-dashboard like any other expense.
+**On deploy (automatic):** every deploy enters the bundled sheets for the
+login whose name matches the sheet, creating a supervisor login for them when
+there is none (random password: set a real one under **Users & passwords**
+before handing the phone over). Lines are left **pending**, nothing is approved,
+and a sheet already in is left alone. A problem here never fails the deploy; it
+is printed in the Vercel build log and the sheet stays available on the phone.
+
+**From the phone (superadmin):** **More → Admin → Import expense sheet** shows
+each bundled sheet with its totals and current state. When a deploy could not
+enter it (several logins with the same name, several sites), pick whose cash
+it is, tap **Preview**, then **Enter now (pending)**. Nothing is approved there
+either: the lines wait on the dashboard like any other expense.
 
 **From a laptop:** the same import runs as a script, which is also the only way
 to approve everything in one go:

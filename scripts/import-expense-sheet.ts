@@ -19,6 +19,11 @@
  *       --site <site code or name> --holder <username> [--as <superadmin username>] \
  *       [--approve] [--dry-run] [--create-holder --username <u> --password <p>]
  *
+ * The deploy runs it as `--bundled`: every sheet shipped in BUNDLED_SHEETS is
+ * entered (pending) for the login whose name matches the sheet, creating a
+ * supervisor login for them when there is none. Nothing there ever fails the
+ * build; problems are printed and the sheet stays available on the phone.
+ *
  * Needs DATABASE_URL (read from .env when present).
  */
 import { PrismaClient, type Site, type User } from "@prisma/client";
@@ -27,7 +32,8 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { formatDate } from "../src/lib/format";
 import { normalizePartyName } from "../src/lib/parties";
-import { importExpenseSheet, SheetError, validateSheet, type ExpenseSheet } from "../src/lib/expense-sheets";
+import { BUNDLED_SHEETS, importExpenseSheet, SheetError, sheetStatus, validateSheet, type ExpenseSheet } from "../src/lib/expense-sheets";
+import { randomBytes } from "node:crypto";
 
 try {
   process.loadEnvFile?.(".env");
@@ -37,10 +43,10 @@ try {
 // CLI
 // ---------------------------------------------------------------------------
 
-type Args = { file: string; site?: string; holder?: string; as?: string; approve: boolean; dryRun: boolean; createHolder: boolean; username?: string; password?: string };
+type Args = { file: string; bundled: boolean; site?: string; holder?: string; as?: string; approve: boolean; dryRun: boolean; createHolder: boolean; username?: string; password?: string };
 
 function parseArgs(argv: string[]): Args {
-  const args: Args = { file: "", approve: false, dryRun: false, createHolder: false };
+  const args: Args = { file: "", bundled: false, approve: false, dryRun: false, createHolder: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     const next = () => {
@@ -56,11 +62,12 @@ function parseArgs(argv: string[]): Args {
     else if (a === "--approve") args.approve = true;
     else if (a === "--dry-run") args.dryRun = true;
     else if (a === "--create-holder") args.createHolder = true;
+    else if (a === "--bundled") args.bundled = true;
     else if (a.startsWith("--")) fail(`Unknown option ${a}`);
     else if (!args.file) args.file = a;
     else fail(`Unexpected argument ${a}`);
   }
-  if (!args.file) fail("Usage: tsx scripts/import-expense-sheet.ts <sheet.json> --site <code|name> --holder <username> [--as <superadmin>] [--approve] [--dry-run]");
+  if (!args.file && !args.bundled) fail("Usage: tsx scripts/import-expense-sheet.ts <sheet.json> --site <code|name> --holder <username> [--as <superadmin>] [--approve] [--dry-run]   or   --bundled");
   return args;
 }
 
@@ -148,9 +155,102 @@ async function pickHolder(prisma: PrismaClient, sheet: ExpenseSheet, site: Site,
 // Main
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Deploy-time import of the bundled sheets. Never throws: a deploy must not fail
+// because a sheet could not be entered; the superadmin can still do it from the
+// phone, and the reason is printed in the build log.
+// ---------------------------------------------------------------------------
+
+/** vinod.shukla, vinod.shukla2, ... from a display name. */
+function usernameFor(name: string, taken: Set<string>) {
+  const base = normalizePartyName(name).replace(/[^a-z0-9 ]/g, "").replace(/ /g, ".").slice(0, 26) || "user";
+  let u = base, n = 2;
+  while (taken.has(u)) u = `${base}${n++}`;
+  return u;
+}
+
+async function runBundled(prisma: PrismaClient) {
+  console.log(`\n[sheets] ${BUNDLED_SHEETS.length} bundled expense sheet(s)`);
+  if ((await prisma.user.count()) === 0) {
+    console.log("[sheets] the app has not been set up yet (no users); skipping. Sheets can be entered from More → Admin after setup.");
+    return;
+  }
+  const sites = await prisma.site.findMany({ where: { active: true }, orderBy: { createdAt: "asc" } });
+  const admins = await prisma.user.findMany({ where: { role: "SUPERADMIN", active: true }, orderBy: { createdAt: "asc" } });
+  if (sites.length === 0 || admins.length === 0) {
+    console.log("[sheets] no active site or superadmin yet; skipping.");
+    return;
+  }
+  const site = sites[0];
+  const admin = admins[0];
+  if (sites.length > 1) console.log(`[sheets] several sites exist; bundled sheets go to the first one, ${site.name}. Use the phone screen for another site.`);
+
+  for (const sheet of BUNDLED_SHEETS) {
+    try {
+      const before = await sheetStatus(prisma, site.id, sheet);
+      if (before.cashEntered >= before.cashTotal && before.linesEntered >= before.linesTotal) {
+        console.log(`[sheets] ${sheet.id}: already entered (${before.linesPending} pending, ${before.linesApproved} approved)`);
+        continue;
+      }
+      let holder: User | null = null;
+      if (before.holder) {
+        holder = await prisma.user.findFirst({ where: { id: before.holder.id } });
+      } else {
+        const users = await prisma.user.findMany({ where: { active: true } });
+        const wanted = normalizePartyName(sheet.holder);
+        const byName = users.filter((u) => normalizePartyName(u.name) === wanted);
+        if (byName.length > 1) {
+          console.log(`[sheets] ${sheet.id}: several logins are named "${sheet.holder}"; choose one on the phone (More → Admin → Import expense sheet).`);
+          continue;
+        }
+        holder = byName[0] ?? null;
+        if (!holder) {
+          // No login for this person yet: create a supervisor on the site. The password is random and
+          // unknown; the superadmin sets a real one under Users & passwords before handing the phone over.
+          const taken = new Set((await prisma.user.findMany({ select: { username: true } })).map((u) => u.username));
+          const username = usernameFor(sheet.holder, taken);
+          holder = await prisma.user.create({
+            data: { username, passwordHash: await bcrypt.hash(randomBytes(24).toString("hex"), 10), name: sheet.holder.trim(), role: "SUPERVISOR", siteId: site.id },
+          });
+          await prisma.auditLog.create({
+            data: { userId: admin.id, siteId: site.id, action: "CREATE", entity: "User", entityId: holder.id, newValues: { username, name: holder.name, role: "SUPERVISOR", reason: `created for expense sheet ${sheet.id}` } },
+          });
+          console.log(`[sheets] ${sheet.id}: created supervisor login "${username}" for ${holder.name}. Set their password under Users & passwords.`);
+        }
+      }
+      if (!holder) continue;
+      const r = await importExpenseSheet(prisma, sheet, { siteId: site.id, holderId: holder.id, enteredById: admin.id });
+      const b = r.balance!;
+      console.log(
+        `[sheets] ${sheet.id}: entered ${r.entered.cash} cash rows and ${r.entered.lines} lines for ${holder.name} (pending). ` +
+          `Cash in hand ${inr(b.inHand)}, awaiting approval ${inr(b.awaitingApproval)}.`,
+      );
+    } catch (e) {
+      console.log(`[sheets] ${sheet.id}: not entered — ${e instanceof Error ? e.message : String(e)}. Use More → Admin → Import expense sheet.`);
+    }
+  }
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  if (!process.env.DATABASE_URL) fail("DATABASE_URL is not set. Put it in .env or export it before running.");
+  if (!process.env.DATABASE_URL) {
+    if (args.bundled) {
+      console.log("[sheets] DATABASE_URL is not set; skipping the bundled sheets.");
+      return;
+    }
+    fail("DATABASE_URL is not set. Put it in .env or export it before running.");
+  }
+  if (args.bundled) {
+    const prisma = new PrismaClient();
+    try {
+      await runBundled(prisma);
+    } catch (e) {
+      console.log(`[sheets] skipped — ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      await prisma.$disconnect();
+    }
+    return;
+  }
   const sheet = readSheet(args.file);
   const prisma = new PrismaClient();
 
