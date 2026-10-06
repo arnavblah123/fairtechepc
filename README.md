@@ -180,6 +180,37 @@ second site exists.
 * **Vercel free (Hobby):** 100 GB bandwidth/month, non-commercial use policy. Photos are compressed to ~200 KB so 5 photos/day is ~30 MB/month.
 * **Vercel Blob free:** 1 GB storage (from Phase 4). At ~200 KB per photo that is roughly 5,000 photos; older photos can be archived later.
 
+## Importing a hand-kept expense sheet
+
+A supervisor who kept an expense sheet in Excel (cash received, lines spent)
+can have it entered in one go instead of line by line on the phone. The sheet
+is typed into a small JSON file (see `data/expense-sheets/`) and imported:
+
+```bash
+npm run import:sheet -- data/expense-sheets/<sheet>.json --dry-run     # shows what would be entered
+npm run import:sheet -- data/expense-sheets/<sheet>.json               # enters it, lines wait for approval
+npm run import:sheet -- data/expense-sheets/<sheet>.json --approve     # enters and approves in one go
+```
+
+It needs `DATABASE_URL` in `.env` (the same Neon string Vercel uses). What it does:
+
+* Each cash the person received becomes a row in their **cash-in-hand ledger**
+  and the site cash book, dated as on the sheet.
+* Each line spent becomes an expense charged to that person, **pending** until
+  the superadmin approves it on the dashboard, or approved at once with `--approve`.
+  Approval debits their ledger exactly as a tap in the app would.
+* A line paid to a labourer is filed as a labour advance when that name is on
+  the labour master, otherwise under Miscellaneous with the name kept as payee.
+* `--site <code or name>` picks the site when there is more than one;
+  `--holder <username>` names the person when their account name differs from
+  the sheet; `--create-holder --username <u> --password <p>` adds them as a
+  supervisor if they have no login yet; `--as <username>` says which superadmin
+  is entering it.
+
+Running it twice is safe: rows already entered are reported, not duplicated.
+
+---
+
 ## Project layout
 
 ```
@@ -193,6 +224,7 @@ src/lib/audit.ts         AuditLog writer (old/new values, user, time)
 src/lib/format.ts        ₹ Indian format, DD-MM-YYYY, IST helpers
 src/lib/seed-data.ts     seed logic shared by the CLI seed and the one-time /setup page
 scripts/build.mjs        Vercel build: prisma generate → migrate deploy → next build
+scripts/import-expense-sheet.ts  enter a hand-kept expense sheet (data/expense-sheets/*.json) in one go
 src/app/(app)/           screens (mobile shell with bottom nav)
 src/app/api/             JSON API routes
 docs/SOP.md              one-page daily routine for the site in-charge (also at /sop in the app)
