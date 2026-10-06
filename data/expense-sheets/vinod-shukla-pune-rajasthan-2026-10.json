@@ -1,0 +1,42 @@
+{
+  "id": "vinod-shukla-pune-rajasthan-2026-10",
+  "title": "Vinod Shukla expenses, Pune to Rajasthan (29 Sep to 4 Oct 2026)",
+  "holder": "Vinod Shukla",
+  "cash": [
+    { "date": "2026-09-01", "kind": "ADVANCE", "amount": 3637, "memo": "Balance carried forward on 01-09-2026 (opening cash in hand)" },
+    { "date": "2026-09-30", "kind": "TOPUP", "amount": 10000, "memo": "Cash from FTE" },
+    { "date": "2026-10-01", "kind": "TOPUP", "amount": 15000, "memo": "Cash from FTE" }
+  ],
+  "lines": [
+    { "date": "2026-09-29", "category": "transport", "description": "Auto, Bhosari to Pune station", "amount": 360 },
+    { "date": "2026-09-29", "category": "food", "description": "Nasta at Pune station", "amount": 100 },
+    { "date": "2026-09-30", "category": "transport", "description": "Ola, Nizamuddin to IFFCO Chowk", "amount": 682 },
+    { "date": "2026-09-30", "category": "food", "description": "Nasta at IFFCO Chowk", "amount": 150 },
+    { "date": "2026-09-30", "category": "transport", "description": "Ola, IFFCO Chowk to Bhiwadi (2 persons)", "amount": 1000 },
+    { "date": "2026-09-30", "category": "transport", "description": "Bhiwadi to Kahrani", "amount": 300 },
+    { "date": "2026-09-30", "category": "miscellaneous", "description": "Basket, mug, jhadu, balti", "amount": 300 },
+    { "date": "2026-09-30", "category": "transport", "description": "Kahrani to Bhiwadi", "amount": 300 },
+    { "date": "2026-09-30", "category": "food", "description": "Lunch", "amount": 210 },
+    { "date": "2026-10-01", "category": "rent", "description": "Hotel bill (stay)", "amount": 2579 },
+    { "date": "2026-10-01", "category": "transport", "description": "Material transport, IFFCO Chowk to Neucon", "amount": 1200 },
+    { "date": "2026-10-01", "category": "food", "description": "Lunch and nasta, 3 persons", "amount": 500 },
+    { "date": "2026-10-01", "category": "miscellaneous", "description": "Bartan / bhandi (utensils)", "amount": 4410 },
+    { "date": "2026-10-01", "category": "food", "description": "Kirana (groceries)", "amount": 3300 },
+    { "date": "2026-10-01", "category": "fuel", "description": "LPG gas, 5 kg", "amount": 1919 },
+    { "date": "2026-10-01", "category": "transport", "description": "Transport of welding rod, Bhiwadi to Kahrani to Neucon", "amount": 500 },
+    { "date": "2026-10-01", "category": "labour-advance", "description": "Paid to Hariram", "amount": 100, "payee": "Hariram" },
+    { "date": "2026-10-02", "category": "transport", "description": "Amit, Faridabad to Neucon", "amount": 500, "payee": "Amit" },
+    { "date": "2026-10-02", "category": "material", "description": "Material, 5 mtr to 15 mtr", "amount": 400 },
+    { "date": "2026-10-02", "category": "transport", "description": "Kahrani to Neucon, up and down", "amount": 200 },
+    { "date": "2026-10-02", "category": "labour-advance", "description": "Karam, personal", "amount": 1200, "payee": "Karam" },
+    { "date": "2026-10-02", "category": "food", "description": "Tea and water", "amount": 60 },
+    { "date": "2026-10-02", "category": "food", "description": "Bhaji (vegetables), bought by Hareram", "amount": 480, "payee": "Hareram" },
+    { "date": "2026-10-03", "category": "food", "description": "Tea and nasta", "amount": 150 },
+    { "date": "2026-10-03", "category": "transport", "description": "Transport of welding machine", "amount": 200 },
+    { "date": "2026-10-03", "category": "labour-advance", "description": "Advance to Amit", "amount": 350, "payee": "Amit" },
+    { "date": "2026-10-04", "category": "food", "description": "Nasta", "amount": 180 },
+    { "date": "2026-10-04", "category": "labour-advance", "description": "Paid to Karan Rajbhar", "amount": 280, "payee": "Karan Rajbhar" },
+    { "date": "2026-10-04", "category": "labour-advance", "description": "Advance to Vinay Kushwaha", "amount": 1000, "payee": "Vinay Kushwaha" }
+  ],
+  "expected": { "received": 28637, "spent": 22910, "inHand": 5727 }
+}
