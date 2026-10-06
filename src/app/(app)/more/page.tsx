@@ -48,6 +48,7 @@ const SECTIONS: { title: string; hi: string; items: Item[] }[] = [
       { href: "/admin/holidays", en: "Site holidays", hi: "छुट्टियाँ", cap: "holiday.manage" },
       { href: "/admin/items", en: "Consumable item master", hi: "आइटम सूची", cap: "item.manage" },
       { href: "/admin/unlocks", en: "Unlock past date", hi: "पुरानी तारीख़ खोलें", cap: "backdate.unlock" },
+      { href: "/admin/import-sheets", en: "Import expense sheet", hi: "खर्च शीट दर्ज करें", cap: "cash.move" },
       { href: "/admin/audit", en: "Audit log", hi: "ऑडिट लॉग", cap: "audit.view" },
     ],
   },
