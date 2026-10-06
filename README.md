@@ -43,6 +43,13 @@ number.
 Every petty cash expense needs the superadmin's approval, whatever the amount.
 There is no auto-approve threshold.
 
+The superadmin can also do everything a site in-charge or supervisor can:
+enter bills, ask for material, raise a machine ticket, inward a consignment,
+request an advance. The home screen has a **Site view** toggle that shows the
+same screen a supervisor sees. On **Add bill** the superadmin picks whose cash
+the bill was paid from, so a sheet sent in by a supervisor can be keyed in
+against that person's cash in hand.
+
 ### Who does what in purchasing
 
 1. **Site supervisor** raises one **indent** with everything needed (several items and quantities, one reason, one needed-by date). An item missing from the list can be added on the spot; it is flagged for Arnav.

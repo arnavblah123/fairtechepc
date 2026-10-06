@@ -14,12 +14,86 @@ import { ProgressEditor } from "./jobs/[id]/progress/ProgressEditor";
 import { ProgressChart } from "@/components/dashboard/ProgressChart";
 import { ApprovalRow } from "@/components/dashboard/ApprovalRow";
 import { PHOTO_SLOTS } from "@/lib/slots";
+import type { Role } from "@prisma/client";
 
-export default async function HomePage() {
+export default async function HomePage({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
   const user = (await getSessionUser())!;
-  if (user.role === "SUPERADMIN") return <AdminDashboard />;
+  // The superadmin lands on the exception dashboard but can flip to the same
+  // home a supervisor sees (stages today, routine, quick actions) with ?view=site.
+  if (user.role === "SUPERADMIN") return (await searchParams).view === "site" ? <SiteHome /> : <AdminDashboard />;
   if (user.role === "PURCHASE") return <PurchaseHome />;
   return <SiteHome />;
+}
+
+/** Superadmin only: switch between the exception dashboard and the supervisor's home. */
+function ViewToggle({ current }: { current: "admin" | "site" }) {
+  return (
+    <div className="flex rounded-xl bg-slate-200 p-0.5 text-xs font-semibold">
+      <Link href="/" className={`flex-1 rounded-lg py-1.5 text-center ${current === "admin" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600"}`}>Dashboard</Link>
+      <Link href="/?view=site" className={`flex-1 rounded-lg py-1.5 text-center ${current === "site" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600"}`}>
+        <Bi en="Site view" hi="साइट व्यू" inline />
+      </Link>
+    </div>
+  );
+}
+
+/**
+ * My cash + the things a person needs to start without hunting through menus.
+ * Shared by the supervisor's home and the superadmin's dashboard.
+ */
+function QuickActions({ role, inHand, pending }: { role: Role; inHand: number; pending: number }) {
+  return (
+    <>
+      {can(role, "expense.create") && (
+        <Link href="/expenses" className="block">
+          <Card>
+            <div className="grid grid-cols-2 gap-3 text-center">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">My cash in hand</div>
+                <div className={`text-2xl font-bold ${inHand < 0 ? "text-red-600" : ""}`}>{formatINR(inHand)}</div>
+              </div>
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Waiting approval</div>
+                <div className="text-2xl font-bold text-amber-600">{formatINR(pending)}</div>
+              </div>
+            </div>
+          </Card>
+        </Link>
+      )}
+      <Card title="Need something?" hi="कुछ चाहिए?">
+        <div className="grid grid-cols-2 gap-2">
+          {can(role, "consumable.request") && (
+            <Link href="/consumables/requests?new=1" className="flex min-h-[92px] flex-col items-center justify-center gap-1 rounded-xl bg-brand px-2 text-center text-white">
+              <span className="text-2xl leading-none">📦</span>
+              <Bi en="Ask for material" hi="सामान माँगें" className="text-sm font-semibold leading-tight" />
+            </Link>
+          )}
+          {can(role, "machine.ticket") && (
+            <Link href="/machines/repair" className="flex min-h-[92px] flex-col items-center justify-center gap-1 rounded-xl bg-slate-800 px-2 text-center text-white">
+              <span className="text-2xl leading-none">🔧</span>
+              <Bi en="Machine repair" hi="मशीन मरम्मत" className="text-sm font-semibold leading-tight" />
+            </Link>
+          )}
+          {can(role, "expense.create") && (
+            <Link href="/expenses/new" className="flex min-h-[92px] flex-col items-center justify-center gap-1 rounded-xl bg-green-700 px-2 text-center text-white">
+              <span className="text-2xl leading-none">💵</span>
+              <Bi en="Add bill / expense" hi="बिल / खर्च भरें" className="text-sm font-semibold leading-tight" />
+            </Link>
+          )}
+          {can(role, "issue.raise") && (
+            <Link href="/issues/new" className="flex min-h-[92px] flex-col items-center justify-center gap-1 rounded-xl bg-red-600 px-2 text-center text-white">
+              <span className="text-2xl leading-none">⚠</span>
+              <Bi en="Raise issue" hi="समस्या बताएँ" className="text-sm font-semibold leading-tight" />
+            </Link>
+          )}
+          <Link href="/consumables" className="flex min-h-[92px] flex-col items-center justify-center gap-1 rounded-xl border-2 border-slate-300 bg-white px-2 text-center text-slate-700">
+            <span className="text-2xl leading-none">🏪</span>
+            <Bi en="Store stock" hi="स्टोर स्टॉक" className="text-sm font-semibold leading-tight" />
+          </Link>
+        </div>
+      </Card>
+    </>
+  );
 }
 
 /* ------------------------------------------------------------------ */
@@ -103,7 +177,7 @@ async function PurchaseHome() {
 async function SiteHome() {
   const user = (await getSessionUser())!;
   const site = await getCurrentSite(user);
-  if (!site) return <EmptyState en="Your account is not attached to a site. Ask Arnav." />;
+  if (!site) return <EmptyState en={user.role === "SUPERADMIN" ? "No site set up yet." : "Your account is not attached to a site. Ask Arnav."} />;
   const today = istDateKey();
   const dateObj = dateKeyToDate(today);
   const [workers, present, muster, slots, plan, dpr, openIssues] = await Promise.all([
@@ -138,6 +212,7 @@ async function SiteHome() {
   ];
   return (
     <div className="space-y-4">
+      {user.role === "SUPERADMIN" && <ViewToggle current="site" />}
       <div>
         <h1 className="text-xl font-bold"><Bi en={`Today ${formatDate(today)}`} hi="आज" inline /></h1>
         <p className="text-sm text-slate-500">{site.name}, {site.city}</p>
@@ -151,55 +226,7 @@ async function SiteHome() {
         <Stat label="Present today" hi="आज हाज़िर" value={`${present} / ${workers}`} tone={present ? "green" : "amber"} />
         <Stat label="Open issues" hi="खुली समस्याएँ" value={openIssues} tone={openIssues ? "red" : "green"} />
       </div>
-      {can(user.role, "expense.create") && (
-        <Link href="/expenses" className="block">
-          <Card>
-            <div className="grid grid-cols-2 gap-3 text-center">
-              <div>
-                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">My cash in hand</div>
-                <div className={`text-2xl font-bold ${myBalance.inHand < 0 ? "text-red-600" : ""}`}>{formatINR(myBalance.inHand)}</div>
-              </div>
-              <div>
-                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Waiting approval</div>
-                <div className="text-2xl font-bold text-amber-600">{formatINR(myPending)}</div>
-              </div>
-            </div>
-          </Card>
-        </Link>
-      )}
-      {/* The four things a supervisor needs to start without hunting through menus. */}
-      <Card title="Need something?" hi="कुछ चाहिए?">
-        <div className="grid grid-cols-2 gap-2">
-          {can(user.role, "consumable.request") && (
-            <Link href="/consumables/requests?new=1" className="flex min-h-[92px] flex-col items-center justify-center gap-1 rounded-xl bg-brand px-2 text-center text-white">
-              <span className="text-2xl leading-none">📦</span>
-              <Bi en="Ask for material" hi="सामान माँगें" className="text-sm font-semibold leading-tight" />
-            </Link>
-          )}
-          {can(user.role, "machine.ticket") && (
-            <Link href="/machines/repair" className="flex min-h-[92px] flex-col items-center justify-center gap-1 rounded-xl bg-slate-800 px-2 text-center text-white">
-              <span className="text-2xl leading-none">🔧</span>
-              <Bi en="Machine repair" hi="मशीन मरम्मत" className="text-sm font-semibold leading-tight" />
-            </Link>
-          )}
-          {can(user.role, "expense.create") && (
-            <Link href="/expenses/new" className="flex min-h-[92px] flex-col items-center justify-center gap-1 rounded-xl bg-green-700 px-2 text-center text-white">
-              <span className="text-2xl leading-none">💵</span>
-              <Bi en="Add expense" hi="खर्च भरें" className="text-sm font-semibold leading-tight" />
-            </Link>
-          )}
-          {can(user.role, "issue.raise") && (
-            <Link href="/issues/new" className="flex min-h-[92px] flex-col items-center justify-center gap-1 rounded-xl bg-red-600 px-2 text-center text-white">
-              <span className="text-2xl leading-none">⚠</span>
-              <Bi en="Raise issue" hi="समस्या बताएँ" className="text-sm font-semibold leading-tight" />
-            </Link>
-          )}
-          <Link href="/consumables" className="flex min-h-[92px] flex-col items-center justify-center gap-1 rounded-xl border-2 border-slate-300 bg-white px-2 text-center text-slate-700">
-            <span className="text-2xl leading-none">🏪</span>
-            <Bi en="Store stock" hi="स्टोर स्टॉक" className="text-sm font-semibold leading-tight" />
-          </Link>
-        </div>
-      </Card>
+      <QuickActions role={user.role} inHand={myBalance.inHand} pending={myPending} />
       {canTrack && crew && (
         <section className="space-y-3">
           <div>
@@ -263,12 +290,13 @@ async function AdminDashboard() {
       </div>
     );
   }
-  const d = await siteDashboard(site.id);
+  const [d, myBalance, myPending] = await Promise.all([siteDashboard(site.id), balanceOf(user.id), pendingSpendOf(user.id)]);
   const pendingCount = d.pendingCons.length + d.pendingPetty.length + d.pendingAdv.length + d.pendingExpenses.length + d.pendingItems.length;
   const workStopped = d.openIssues.filter((i) => i.severity === "WORK_STOPPED");
 
   return (
     <div className="space-y-4">
+      <ViewToggle current="admin" />
       <div>
         <h1 className="text-xl font-bold">{formatDate(d.today)} · {d.site.name}</h1>
         <p className="text-sm text-slate-500">Exceptions first. No news here = site is fine.</p>
@@ -314,6 +342,9 @@ async function AdminDashboard() {
           <Stat label="Burn / day" hi="रोज़ खर्च" value={formatINR(Math.round(d.burnRate))} />
         </Link>
       </div>
+
+      {/* Everything a supervisor can do, the MD can do too: enter a bill, ask for material, raise a ticket. */}
+      <QuickActions role={user.role} inHand={myBalance.inHand} pending={myPending} />
 
       {/* Pending approvals */}
       <Card title={`Pending approvals (${pendingCount})`} hi="मंज़ूरी बाकी">

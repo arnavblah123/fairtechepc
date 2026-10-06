@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/ui/Card";
 import { BillForm } from "./BillForm";
 import { balanceOf, pendingSpendOf } from "@/lib/ledger";
 import { istDateKey, titleCase } from "@/lib/format";
+import { can, ROLE_LABELS } from "@/lib/permissions";
 
 export default async function NewExpensePage() {
   const user = await requirePage("expense.create");
@@ -20,6 +21,23 @@ export default async function NewExpensePage() {
     balanceOf(user.id),
     pendingSpendOf(user.id),
   ]);
+  // The office may book a bill against somebody else's cash (a sheet a supervisor
+  // sent in, say). The API only honours spentById for a superadmin; here we only
+  // offer the choice to one, with each person's balance so the card stays honest.
+  const spenders = can(user.role, "cash.view")
+    ? await Promise.all(
+        (
+          await prisma.user.findMany({
+            where: { active: true, role: { in: ["SUPERADMIN", "SITE_INCHARGE", "SUPERVISOR"] }, OR: [{ siteId: site.id }, { role: "SUPERADMIN" }] },
+            orderBy: [{ role: "asc" }, { name: "asc" }],
+            select: { id: true, name: true, role: true },
+          })
+        ).map(async (u) => {
+          const [b, p] = u.id === user.id ? [balance, pending] : await Promise.all([balanceOf(u.id), pendingSpendOf(u.id)]);
+          return { id: u.id, label: u.id === user.id ? `${u.name} (me)` : `${u.name} · ${ROLE_LABELS[u.role].en}`, inHand: b.inHand, pending: p };
+        }),
+      )
+    : [];
   return (
     <div>
       <PageHeader title="Add bill / expense" hi="बिल / खर्च भरें" back="/expenses" />
@@ -27,6 +45,8 @@ export default async function NewExpensePage() {
         today={istDateKey()}
         inHand={balance.inHand}
         pending={pending}
+        meId={user.id}
+        spenders={spenders}
         categories={categories.map((c) => ({ id: c.id, name: c.name, requiresPerson: c.requiresPerson, requiresMachine: c.requiresMachine }))}
         jobs={jobs.map((j) => ({ id: j.id, label: `${j.jobNumber} · ${j.name}` }))}
         workers={workers.map((w) => ({ id: w.id, label: `${w.code} · ${w.name}` }))}

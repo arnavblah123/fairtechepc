@@ -42,7 +42,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
         canCreate={can(user.role, "expense.create")}
         canApprove={can(user.role, "expense.approve")}
         canDelete={can(user.role, "record.delete")}
-        showOwnCash={can(user.role, "expense.create") && user.role !== "SUPERADMIN"}
+        showOwnCash={can(user.role, "expense.create")}
         inHand={balance.inHand}
         pending={pending}
         activeStatus={status ?? null}

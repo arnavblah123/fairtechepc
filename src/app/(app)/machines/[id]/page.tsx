@@ -64,7 +64,7 @@ export default async function MachineDetailPage({ params }: { params: Promise<{ 
             ? { id: openTicket.id, problem: openTicket.problem, status: openTicket.status, repairType: openTicket.repairType, repairedBy: openTicket.repairedBy ?? "", repairCost: openTicket.repairCost ? Number(openTicket.repairCost) : null, downtimeDays: openTicket.downtimeDays ? Number(openTicket.downtimeDays) : null, parts: openTicket.parts.map((p) => ({ item: p.item, qty: Number(p.qty), price: Number(p.price) })) }
             : null
         }
-        openDispatch={openDispatch ? { id: openDispatch.id, direction: openDispatch.direction, canAck: openDispatch.direction === "TO_SITE" ? can(user.role, "machine.receive") && user.siteId === openDispatch.siteId : isAdmin } : null}
+        openDispatch={openDispatch ? { id: openDispatch.id, direction: openDispatch.direction, canAck: openDispatch.direction === "TO_SITE" ? can(user.role, "machine.receive") && (isAdmin || user.siteId === openDispatch.siteId) : isAdmin } : null}
       />
       <Card title="Maintenance history" hi="मरम्मत इतिहास">
         {m.tickets.length === 0 ? <p className="text-sm text-slate-500">No breakdowns recorded.</p> : (

@@ -3,6 +3,10 @@ import type { Role } from "@prisma/client";
 /**
  * Single source of truth for what each role may do.
  * UI hides anything the role cannot do; API routes call `can()` again server-side.
+ *
+ * The superadmin can do everything a site in-charge or supervisor can (enter
+ * bills, ask for material, raise tickets, inward consignments) on top of the
+ * approvals, so the MD can stand in at site or key in a sheet someone sent.
  */
 export const CAPABILITIES = {
   // admin
@@ -25,7 +29,7 @@ export const CAPABILITIES = {
   "holiday.manage": ["SUPERADMIN"],
   "wage.rate": ["SUPERADMIN"],
   "wage.view": ["SUPERADMIN"],
-  "advance.request": ["SITE_INCHARGE", "SUPERVISOR"],
+  "advance.request": ["SUPERADMIN", "SITE_INCHARGE", "SUPERVISOR"],
   "advance.approve": ["SUPERADMIN"],
   // daily
   "plan.submit": ["SUPERADMIN", "SITE_INCHARGE", "SUPERVISOR"],
@@ -37,20 +41,20 @@ export const CAPABILITIES = {
   // consumables
   "consumable.view": ["SUPERADMIN", "SITE_INCHARGE", "SUPERVISOR", "PURCHASE", "VIEWER"],
   "consumable.consume": ["SUPERADMIN", "SITE_INCHARGE", "SUPERVISOR"],
-  "consumable.request": ["SITE_INCHARGE", "SUPERVISOR"],
+  "consumable.request": ["SUPERADMIN", "SITE_INCHARGE", "SUPERVISOR"],
   "consumable.approve": ["SUPERADMIN"],
   "consumable.order": ["PURCHASE", "SUPERADMIN"], // purchase desk in Pune places the order
   "consumable.dispatch": ["SUPERADMIN", "PURCHASE"],
-  "consumable.receive": ["SITE_INCHARGE", "SUPERVISOR"], // inward + acceptance at site
+  "consumable.receive": ["SUPERADMIN", "SITE_INCHARGE", "SUPERVISOR"], // inward + acceptance at site
   "item.manage": ["SUPERADMIN", "PURCHASE"],
-  "item.propose": ["SITE_INCHARGE", "SUPERVISOR"], // add a missing item while ordering; flagged for the superadmin
+  "item.propose": ["SUPERADMIN", "SITE_INCHARGE", "SUPERVISOR"], // add a missing item while ordering; flagged for the superadmin
   "item.approve": ["SUPERADMIN"],
   "stock.adjust": ["SUPERADMIN"], // set stock on hand directly, with a reason
   // machines
   "machine.view": ["SUPERADMIN", "SITE_INCHARGE", "SUPERVISOR", "VIEWER"],
   "machine.dispatch": ["SUPERADMIN"],
-  "machine.receive": ["SITE_INCHARGE", "SUPERVISOR"],
-  "machine.ticket": ["SUPERVISOR", "SITE_INCHARGE"],
+  "machine.receive": ["SUPERADMIN", "SITE_INCHARGE", "SUPERVISOR"],
+  "machine.ticket": ["SUPERADMIN", "SITE_INCHARGE", "SUPERVISOR"],
   // petty cash expenses
   "expense.view": ["SUPERADMIN", "SITE_INCHARGE", "SUPERVISOR", "VIEWER"],
   "expense.create": ["SUPERADMIN", "SITE_INCHARGE", "SUPERVISOR"],
@@ -59,9 +63,9 @@ export const CAPABILITIES = {
   "cash.move": ["SUPERADMIN"], // issue, take back or correct someone's cash
   "vendor.view": ["SUPERADMIN", "SITE_INCHARGE", "SUPERVISOR", "PURCHASE", "VIEWER"], // payee ledger with bills and photos
   // money
-  "petty.request": ["SITE_INCHARGE", "SUPERVISOR"],
+  "petty.request": ["SUPERADMIN", "SITE_INCHARGE", "SUPERVISOR"],
   "petty.approve": ["SUPERADMIN"],
-  "petty.expense": ["SITE_INCHARGE"],
+  "petty.expense": ["SUPERADMIN", "SITE_INCHARGE"],
   "money.view": ["SUPERADMIN"],
   "dashboard.admin": ["SUPERADMIN"],
 } as const satisfies Record<string, readonly Role[]>;

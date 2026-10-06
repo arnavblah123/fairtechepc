@@ -10,6 +10,7 @@ import { formatINR } from "@/lib/format";
 
 type Category = { id: string; name: string; requiresPerson: boolean; requiresMachine: boolean };
 type Opt = { id: string; label: string };
+type Spender = Opt & { inHand: number; pending: number };
 type Line = { categoryId: string; description: string; amount: string; jobId: string; workerId: string; machineId: string; problem: string; solution: string };
 
 /**
@@ -24,10 +25,17 @@ const SOURCES: [string, string, string, string][] = [
 ];
 
 /** One bill, one payee, one photo, as many lines as are on it. */
-export function BillForm({ today, inHand, pending, categories, jobs, workers, machines, vendors }: {
-  today: string; inHand: number; pending: number; categories: Category[]; jobs: Opt[]; workers: Opt[]; machines: Opt[]; vendors: string[];
+export function BillForm({ today, inHand: myInHand, pending: myPending, meId, spenders = [], categories, jobs, workers, machines, vendors }: {
+  today: string; inHand: number; pending: number; meId: string;
+  /** Superadmin only: people whose cash this bill may be charged to. Empty for everyone else. */
+  spenders?: Spender[];
+  categories: Category[]; jobs: Opt[]; workers: Opt[]; machines: Opt[]; vendors: string[];
 }) {
   const blank = (): Line => ({ categoryId: categories[0]?.id ?? "", description: "", amount: "", jobId: "", workerId: "", machineId: "", problem: "", solution: "" });
+  const [spentById, setSpentBy] = useState(meId);
+  const spender = spenders.find((s) => s.id === spentById);
+  const inHand = spender?.inHand ?? myInHand;
+  const pending = spender?.pending ?? myPending;
   const [date, setDate] = useState(today);
   const [payeeText, setPayee] = useState("");
   const [billNo, setBillNo] = useState("");
@@ -47,7 +55,7 @@ export function BillForm({ today, inHand, pending, categories, jobs, workers, ma
     <div className="space-y-4">
       <Card>
         <div className="grid grid-cols-2 gap-3 text-center">
-          <div><div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Cash in hand</div><div className={`text-xl font-bold ${inHand < 0 ? "text-red-600" : ""}`}>{formatINR(inHand)}</div></div>
+          <div><div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{spender && spentById !== meId ? `${spender.label.split(" · ")[0]}'s cash` : "Cash in hand"}</div><div className={`text-xl font-bold ${inHand < 0 ? "text-red-600" : ""}`}>{formatINR(inHand)}</div></div>
           <div><div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Safe to spend</div><div className="text-xl font-bold text-slate-700">{formatINR(safeToSpend)}</div></div>
         </div>
         {pending > 0 && <p className="mt-1 text-center text-xs text-slate-500">{formatINR(pending)} waiting for approval</p>}
@@ -56,8 +64,13 @@ export function BillForm({ today, inHand, pending, categories, jobs, workers, ma
       <Card>
         <form className="space-y-4" onSubmit={(e) => {
           e.preventDefault();
-          submit(() => api("/api/bills", { body: { date, payeeText, billNo, paidFrom, billPhotoUrl: bill, note, lines: ready.map((l) => ({ ...l, amount: Number(l.amount), jobId: l.jobId || null, workerId: l.workerId || null, machineId: l.machineId || null })) } }), { to: "/expenses" });
+          submit(() => api("/api/bills", { body: { date, payeeText, billNo, paidFrom, billPhotoUrl: bill, note, spentById: spenders.length ? spentById : undefined, lines: ready.map((l) => ({ ...l, amount: Number(l.amount), jobId: l.jobId || null, workerId: l.workerId || null, machineId: l.machineId || null })) } }), { to: "/expenses" });
         }}>
+          {spenders.length > 0 && (
+            <Select label="Whose bill is this?" hi="किसका बिल है" value={spentById} onChange={(e) => setSpentBy(e.target.value)} hint="Pick the person who paid. Their cash in hand goes down when it is approved.">
+              {spenders.map((s) => (<option key={s.id} value={s.id}>{s.label}</option>))}
+            </Select>
+          )}
           <Input label="Paid to (shop or person)" hi="किसे दिया" value={payeeText} onChange={(e) => setPayee(e.target.value)} required list="vendor-names" autoFocus hint="Same name every time keeps that shop's ledger together." />
           <datalist id="vendor-names">{vendors.map((v) => (<option key={v} value={v} />))}</datalist>
           <div className="grid grid-cols-2 gap-3">
@@ -126,7 +139,7 @@ export function BillForm({ today, inHand, pending, categories, jobs, workers, ma
             </div>
             <Button type="button" variant="outline" full size="sm" className="mt-2" onClick={() => setLines([...lines, blank()])}>+ <Bi en="Add another line" hi="एक और लाइन" inline /></Button>
           </div>
-          {over && <p className="rounded-lg bg-amber-50 p-2 text-sm text-amber-800">This bill is more than the cash you are holding. Send it anyway if correct — Arnav will see it.</p>}
+          {over && <p className="rounded-lg bg-amber-50 p-2 text-sm text-amber-800">{spender && spentById !== meId ? "This bill is more than the cash this person is holding. Send it anyway if correct." : "This bill is more than the cash you are holding. Send it anyway if correct — Arnav will see it."}</p>}
 
           <CameraInput label="Bill photo" hi="बिल फोटो" requireGeo={false} preview={bill || null} onCaptured={(p) => setBill(p.url)} />
           <p className="-mt-2 text-xs text-slate-500"><Bi en="A shop bill must have its photo. Paying a person (labour, tempo, tea) has no bill — leave it empty." hi="दुकान के बिल की फोटो ज़रूरी। किसी व्यक्ति को दिया पैसा — बिना फोटो ठीक है।" /></p>
