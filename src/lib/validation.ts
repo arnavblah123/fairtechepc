@@ -474,7 +474,7 @@ export const indentDecideSchema = consDecideSchema;
 
 // ---- Bill: one payee, one photo, several lines ----
 export const billLineSchema = z.object({
-  categoryId: z.string().min(1, "Choose a category"),
+  categoryId: z.string().optional().or(z.literal("")),
   description: z.string().trim().min(2, "Say what it was").max(300),
   amount: z.coerce.number().positive("Amount must be more than 0").max(9999999),
   jobId: z.string().optional().nullable(),

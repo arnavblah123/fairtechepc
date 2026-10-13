@@ -22,8 +22,11 @@ export async function partyFor(tx: Tx, siteId: string, name: string, kind: "LABO
 }
 
 /** Category rules, shared by single entries and bill lines. */
-export async function assertLineRules(tx: Tx, line: { categoryId: string; workerId?: string | null; machineId?: string | null; problem?: string | null }) {
-  const category = await tx.expenseCategory.findFirst({ where: { id: line.categoryId, active: true } });
+export async function assertLineRules(tx: Tx, line: { categoryId?: string | null; workerId?: string | null; machineId?: string | null; problem?: string | null }) {
+  // No category picked (the bill form does not ask yet): file it under "General".
+  const category = line.categoryId
+    ? await tx.expenseCategory.findFirst({ where: { id: line.categoryId, active: true } })
+    : await tx.expenseCategory.upsert({ where: { slug: "general" }, update: {}, create: { slug: "general", name: "General", sortOrder: 999 } });
   if (!category) throw new ApiError(400, "Category not found");
   if (category.requiresPerson && !line.workerId) throw new ApiError(400, `${category.name}: choose which worker this was for`);
   if (category.requiresMachine && !line.machineId) throw new ApiError(400, `${category.name}: choose which machine this was for`);
