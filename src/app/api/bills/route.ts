@@ -21,7 +21,9 @@ export const POST = withAuth("expense.create", async ({ user, req, ip }) => {
   const spentById = body.spentById && user.role === "SUPERADMIN" ? body.spentById : user.id;
 
   const bill = await prisma.$transaction(async (tx) => {
-    const categories = await Promise.all(body.lines.map((l) => assertLineRules(tx, l)));
+    // Sequential: lines without a category share one upserted default.
+    const categories: Awaited<ReturnType<typeof assertLineRules>>[] = [];
+    for (const l of body.lines) categories.push(await assertLineRules(tx, l));
     const labour = categories.some((c) => c.requiresPerson);
     const party = await partyFor(tx, siteId, body.payeeText, labour ? "LABOUR" : "VENDOR");
     const created = await tx.bill.create({
@@ -37,11 +39,11 @@ export const POST = withAuth("expense.create", async ({ user, req, ip }) => {
         spentById,
         enteredById: user.id,
         lines: {
-          create: body.lines.map((l) => ({
+          create: body.lines.map((l, i) => ({
             siteId,
             date: dateKeyToDate(body.date),
             amount: l.amount,
-            categoryId: l.categoryId,
+            categoryId: categories[i].id,
             entryType,
             paidFrom: body.paidFrom,
             description: l.description,

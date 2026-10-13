@@ -27,7 +27,8 @@ const SOURCES: [string, string, string, string][] = [
 export function BillForm({ today, inHand, pending, categories, jobs, workers, machines, vendors }: {
   today: string; inHand: number; pending: number; categories: Category[]; jobs: Opt[]; workers: Opt[]; machines: Opt[]; vendors: string[];
 }) {
-  const blank = (): Line => ({ categoryId: categories[0]?.id ?? "", description: "", amount: "", jobId: "", workerId: "", machineId: "", problem: "", solution: "" });
+  // Category picker is hidden for now; lines go in under the default category on the server.
+  const blank = (): Line => ({ categoryId: "", description: "", amount: "", jobId: "", workerId: "", machineId: "", problem: "", solution: "" });
   const [date, setDate] = useState(today);
   const [payeeText, setPayee] = useState("");
   const [billNo, setBillNo] = useState("");
@@ -94,9 +95,6 @@ export function BillForm({ today, inHand, pending, categories, jobs, workers, ma
                       <button type="button" className="px-1 font-bold text-red-600" aria-label="Remove line" onClick={() => setLines(lines.length > 1 ? lines.filter((_, j) => j !== i) : [blank()])}>✕</button>
                     </div>
                     <div className="mt-2 flex gap-2 pl-7">
-                      <select className="min-w-0 flex-1 rounded-lg border-2 border-slate-300 p-2 text-sm" value={l.categoryId} onChange={(e) => patch(i, { categoryId: e.target.value })} aria-label="Category">
-                        {categories.map((c) => (<option key={c.id} value={c.id}>{c.name}</option>))}
-                      </select>
                       <select className="min-w-0 flex-1 rounded-lg border-2 border-slate-300 p-2 text-sm" value={l.jobId} onChange={(e) => patch(i, { jobId: e.target.value })} aria-label="Job">
                         <option value="">— job —</option>
                         {jobs.map((j) => (<option key={j.id} value={j.id}>{j.label}</option>))}
